@@ -983,11 +983,12 @@ generate_main_cmake_file()
     echo >> ${OFN}
     echo '# Set compiler flags' >> ${OFN}
     echo 'if ( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )' >> ${OFN}
+    echo '  set ( CMAKE_COMPILER_IS_CLANG TRUE )' >> ${OFN}
     echo '  set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-logical-op-parentheses" )' >> ${OFN}
     echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
-    echo 'if ( CMAKE_COMPILER_IS_GNUCC )' >> ${OFN}
+    echo 'if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )' >> ${OFN}
     echo '  set ( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -std=c++11 -O3 -ffunction-sections -fdata-sections" )' >> ${OFN}
     echo '  set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -std=c++11 -O0" )' >> ${OFN}
     echo 'elseif ( MSVC )' >> ${OFN}
@@ -1044,6 +1045,10 @@ generate_main_cmake_file()
     echo '  if ( PNG_FOUND )' >> ${OFN}
     echo '      include_directories( ${PNG_INCLUDE_DIR} )' >> ${OFN}
     echo "      list ( APPEND main_${LINK_LIST} \${PNG_LIBRARIES} )" >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '  if ( ${CMAKE_SYSTEM_NAME} MATCHES BSD )' >> ${OFN}
+    echo '      link_directories( /usr/local/lib )' >> ${OFN}
     echo '  endif()' >> ${OFN}
     echo 'endif()' >> ${OFN}
 
