@@ -1046,6 +1046,10 @@ generate_main_cmake_file()
     echo '      include_directories( ${PNG_INCLUDE_DIR} )' >> ${OFN}
     echo "      list ( APPEND main_${LINK_LIST} \${PNG_LIBRARIES} )" >> ${OFN}
     echo '  endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '  if ( ${CMAKE_SYSTEM_NAME} MATCHES BSD )' >> ${OFN}
+    echo '      link_directories( /usr/local/lib )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
     echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
