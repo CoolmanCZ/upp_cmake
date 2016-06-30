@@ -18,6 +18,7 @@ generate_main_cmake_file <full path to the ultimate++ project file> [build flags
 - New Core with C++11 build (require GCC 4.9+)
 - Release or debug build
 - Binary resource support (BINARY, BINARY_MASK, BINARY_ARRAY)
+- Cross compile support (require MINGW GCC 4.9+)
 
 ## Limitation
 - Initial version was tested only on LINUX platform

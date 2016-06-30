@@ -33,13 +33,16 @@ LINK_LIST="LINK_LIST"
 DEPEND_LIST="DEPEND_LIST"
 SOURCE_LIST="SOURCE_LIST"
 HEADER_LIST="HEADER_LIST"
+SOURCE_ICPP_LIST="SOURCE_ICPP_LIST"
 
 BIN_SUFFIX="-bin"
 LIB_SUFFIX="-lib"
 
 RE_BZIP2='[bB][zZ]2'
 RE_ZIP='[zZ][iI][pP]'
+RE_PNG='[pP][nN][gG]'
 RE_CPP='\.([cC]+[xXpP]{0,2})$'
+RE_ICPP='\.([iI][cC]+[xXpP]{0,2})$'
 RE_BRC='\.(brc)$'
 RE_USES='^uses\('
 RE_LINK='^link\('
@@ -719,6 +722,7 @@ generate_cmake_from_upp()
     local USES=()
     local HEADER=()
     local SOURCE=()
+    local SOURCE_ICPP=()
     local uses_start=""
     local files_start=""
     local tmp=""
@@ -798,6 +802,8 @@ generate_cmake_from_upp()
                     else
                         if [[ "${list}" =~ $RE_CPP ]]; then         # C/C++ source files
                             SOURCE+=(${list})
+                        elif [[ "${list}" =~ $RE_ICPP ]]; then      # icpp C/C++ source files
+                            SOURCE_ICPP+=(${list})
                         elif [[ "${list}" =~ $RE_BRC ]]; then       # BRC resource files
                             $(binary_resource_parse "$list")
                             HEADER+=(${list})
@@ -837,6 +843,16 @@ generate_cmake_from_upp()
             echo ")" >> ${OFN}
         fi
 
+        # Create icpp source files list
+        if [ -n ${SOURCE_ICPP} ] ; then
+            echo >> ${OFN}
+            echo "list ( APPEND ${SOURCE_ICPP_LIST}" >> ${OFN}
+            for list in "${SOURCE_ICPP[@]}"; do
+                echo "      ${list}" >> ${OFN}
+            done
+            echo ")" >> ${OFN}
+        fi
+
         # Create dependency list
         if [ -n ${USES} ] ; then
             echo >> ${OFN}
@@ -849,10 +865,17 @@ generate_cmake_from_upp()
         fi
 
         echo >> ${OFN}
+        echo '# icpp files processing' >> ${OFN}
+        echo 'foreach ( icppFile ${SOURCE_ICPP_LIST} )' >> ${OFN}
+        echo '  set ( output_file "${CMAKE_CURRENT_BINARY_DIR}/${icppFile}.cpp" )' >> ${OFN}
+        echo '  file ( WRITE "${output_file}" "#include \"${CMAKE_CURRENT_SOURCE_DIR}/${icppFile}\"\n" )' >> ${OFN}
+        echo '  list ( APPEND ICPP_LIST ${output_file} )' >> ${OFN}
+        echo 'endforeach()' >> ${OFN}
+
+        echo >> ${OFN}
         echo "# Module properties" >> ${OFN}
         echo "set_source_files_properties ( \${$HEADER_LIST} PROPERTIES HEADER_FILE_ONLY ON )" >> ${OFN}
-        echo "create_cpps_from_icpps()" >> ${OFN}
-        echo "add_library ( ${target_name}${LIB_SUFFIX} \${INIT_FILE} \${$SOURCE_LIST} \${$HEADER_LIST})" >> ${OFN}
+        echo "add_library ( ${target_name}${LIB_SUFFIX} \${INIT_FILE} \${$SOURCE_LIST} \${$HEADER_LIST} \${ICPP_LIST} )" >> ${OFN}
 
         echo >> ${OFN}
         echo "# Module dependecies" >> ${OFN}
@@ -997,20 +1020,13 @@ generate_main_cmake_file()
     echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
-    echo '# The -O3 might be unreliable on MinGW. Use -Os instead.' >> ${OFN}
+    echo '# The optimalization might be broken on MinGW - remove optimalization flag (cross compile).' >> ${OFN}
     echo 'if ( MINGW )' >> ${OFN}
-    echo '  replace_compiler_option ( CMAKE_CXX_FLAGS_RELEASE "-O3" "-Os" )' >> ${OFN}
+    echo '  add_definitions ( -DflagWIN32 )' >> ${OFN}
+    echo '  remove_definitions( -DflagLINUX )' >> ${OFN}
+    echo '  list ( APPEND main_LINK_LIST mingw32 )' >> ${OFN}
+    echo '  string ( REGEX REPLACE "-O3" "" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} )' >> ${OFN}
     echo 'endif()' >> ${OFN}
-
-    echo >> ${OFN}
-    echo '# Function to create cpp source from iccp files' >> ${OFN}
-    echo 'function ( create_cpps_from_icpps )' >> ${OFN}
-    echo '    file ( GLOB icpp_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/*.icpp" )' >> ${OFN}
-    echo '    foreach ( icppFile ${icpp_files} )' >> ${OFN}
-    echo '        set ( output_file "${CMAKE_CURRENT_BINARY_DIR}/${icppFile}.cpp" )' >> ${OFN}
-    echo '        file ( WRITE "${output_file}" "#include \"${CMAKE_CURRENT_SOURCE_DIR}/${icppFile}\"\n" )' >> ${OFN}
-    echo '    endforeach()' >> ${OFN}
-    echo 'endfunction()' >> ${OFN}
 
     echo >> ${OFN}
     echo '# Import and set up required packages and libraries'>> ${OFN}
@@ -1047,17 +1063,16 @@ generate_main_cmake_file()
     echo "      list ( APPEND main_${LINK_LIST} \${PNG_LIBRARIES} )" >> ${OFN}
     echo '  endif()' >> ${OFN}
     echo >> ${OFN}
+    echo '  find_package ( BZip2 REQUIRED )' >> ${OFN}
+    echo '  if ( BZIP2_FOUND )' >> ${OFN}
+    echo '      include_directories ( ${BZIP_INCLUDE_DIRS} )' >> ${OFN}
+    echo "      list ( APPEND main_${LINK_LIST} \${BZIP2_LIBRARIES} )" >> ${OFN}
+    echo '  endif ()' >> ${OFN}
+    echo >> ${OFN}
     echo '  if ( ${CMAKE_SYSTEM_NAME} MATCHES BSD )' >> ${OFN}
     echo '      link_directories( /usr/local/lib )' >> ${OFN}
     echo '  endif()' >> ${OFN}
     echo 'endif()' >> ${OFN}
-
-    echo >> ${OFN}
-    echo 'find_package ( BZip2 REQUIRED )' >> ${OFN}
-    echo 'if ( BZIP2_FOUND )' >> ${OFN}
-    echo '  include_directories ( ${BZIP_INCLUDE_DIRS} )' >> ${OFN}
-    echo "  list ( APPEND main_${LINK_LIST} \${BZIP2_LIBRARIES} )" >> ${OFN}
-    echo 'endif ()' >> ${OFN}
 
     echo >> ${OFN}
     echo 'if ( "${FlagDefs}" MATCHES "flagMT" )' >> ${OFN}
@@ -1098,6 +1113,14 @@ generate_main_cmake_file()
                 generate_cmake_file ${UPP_SRC_DIR}/${process_upp}/${process_upp}.upp "${process_upp}"
             fi
             echo "add_subdirectory ( ${UPP_SRC_DIR}/${process_upp} )" >> ${OFN}
+            if [[ "${process_upp}" =~ $RE_PNG ]]; then
+                echo >> ${OFN}
+                echo '# Add PNG library for MINGW compilation' >> ${OFN}
+                echo 'if ( MINGW )' >> ${OFN}
+                echo "      list ( APPEND MAIN_TARGET_LINK_LIBRARY png )" >> ${OFN}
+                echo 'endif ()' >> ${OFN}
+                echo >> ${OFN}
+            fi
         fi
 
         UPP_ALL_USES_DONE+=("${process_upp}")
@@ -1124,10 +1147,8 @@ generate_main_cmake_file()
     echo ")" >> ${OFN}
 
     echo >> ${OFN}
-    echo 'file ( GLOB_RECURSE cpp_ini_files "${CMAKE_CURRENT_BINARY_DIR}/../*.icpp.cpp" )' >> ${OFN}
     echo 'file ( WRITE ${PROJECT_BINARY_DIR}/null.cpp "" )' >> ${OFN}
-    echo "add_executable ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/null.cpp \${cpp_ini_files} )" >> ${OFN}
-#    echo "set_source_files_properties ( \${PROJECT_BINARY_DIR}/null.cpp PROPERTIES OBJECT_DEPENDS \${PROJECT_BINARY_DIR}/inc/build_info.h )" >> ${OFN}
+    echo "add_executable ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/null.cpp )" >> ${OFN}
 
     echo >> ${OFN}
     echo "# Main program dependecies" >> ${OFN}

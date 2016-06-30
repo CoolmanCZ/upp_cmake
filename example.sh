@@ -32,10 +32,11 @@ source ./GenerateCMakeFiles-lib.sh
 GENERATE_VERBOSE="1"
 GENERATE_DEBUG="1"
 
-UPP_SRC_DIR="upp-x11-src-2016-05-23/uppsrc"
+UPP_SRC_BASE="upp-x11-src-2016-06-21"
+UPP_SRC_DIR="${UPP_SRC_BASE}/uppsrc"
 
 generate_main_cmake_file ${UPP_SRC_DIR}/ide/ide.upp "-DflagGUI -DflagMT -DflagGCC -DflagSHARED -DflagLINUX -DflagPOSIX"
-#generate_main_cmake_file upp-x11-src-2016-05-23/reference/brc/brc.upp "-DflagLINUX -DflagPOSIX -DflagSHARED -DflagDEBUG"
+#generate_main_cmake_file ${UPP_SRC_BASE}/reference/brc/brc.upp "-DflagLINUX -DflagPOSIX -DflagSHARED -DflagDEBUG"
 
 if [ "${GENERATE_DEBUG}" == "1" ]; then
     declare -A sorted_UPP_ALL_USES=$(printf "%s\n" "${UPP_ALL_USES[@]}" | sort -u);
