@@ -865,28 +865,21 @@ generate_cmake_from_upp()
         fi
 
         echo >> ${OFN}
-        echo '# icpp files processing' >> ${OFN}
-        echo 'foreach ( icppFile ${SOURCE_ICPP_LIST} )' >> ${OFN}
-        echo '  set ( output_file "${CMAKE_CURRENT_BINARY_DIR}/${icppFile}.cpp" )' >> ${OFN}
-        echo '  file ( WRITE "${output_file}" "#include \"${CMAKE_CURRENT_SOURCE_DIR}/${icppFile}\"\n" )' >> ${OFN}
-        echo '  list ( APPEND ICPP_LIST ${output_file} )' >> ${OFN}
-        echo 'endforeach()' >> ${OFN}
-
-        echo >> ${OFN}
         echo "# Module properties" >> ${OFN}
+        echo "create_cpps_from_icpps()" >> ${OFN}
         echo "set_source_files_properties ( \${$HEADER_LIST} PROPERTIES HEADER_FILE_ONLY ON )" >> ${OFN}
-        echo "add_library ( ${target_name}${LIB_SUFFIX} \${INIT_FILE} \${$SOURCE_LIST} \${$HEADER_LIST} \${ICPP_LIST} )" >> ${OFN}
+        echo "add_library ( ${target_name}${LIB_SUFFIX} \${INIT_FILE} \${$SOURCE_LIST} \${$HEADER_LIST} )" >> ${OFN}
 
         echo >> ${OFN}
         echo "# Module dependecies" >> ${OFN}
-        echo "if (DEFINED ${target_name}_${DEPEND_LIST})" >> ${OFN}
+        echo "if ( DEFINED ${target_name}_${DEPEND_LIST} )" >> ${OFN}
         echo "      add_dependencies ( ${target_name}${LIB_SUFFIX} \${${target_name}_$DEPEND_LIST} )" >> ${OFN}
         echo "endif()" >> ${OFN}
 
         echo >> ${OFN}
         echo "# Module link" >> ${OFN}
-        echo "if (DEFINED ${target_name}_${DEPEND_LIST} OR DEFINED $LINK_LIST)" >> ${OFN}
-        echo "      target_link_libraries ( ${target_name}${LIB_SUFFIX} \${${target_name}_${DEPEND_LIST}} \${$LINK_LIST})" >> ${OFN}
+        echo "if ( DEFINED ${target_name}_${DEPEND_LIST} OR DEFINED $LINK_LIST )" >> ${OFN}
+        echo "      target_link_libraries ( ${target_name}${LIB_SUFFIX} \${${target_name}_${DEPEND_LIST}} \${$LINK_LIST} )" >> ${OFN}
         echo "endif()" >> ${OFN}
         echo >> ${OFN}
 
@@ -989,8 +982,8 @@ generate_main_cmake_file()
     echo "add_definitions ( "${main_definitions}" )" >> ${OFN}
 
     echo >> ${OFN}
-    echo "# Read compiler definitions - used to set appropriate modules" >> ${OFN}
-    echo "get_directory_property ( FlagDefs COMPILE_DEFINITIONS )" >> ${OFN}
+    echo '# Read compiler definitions - used to set appropriate modules' >> ${OFN}
+    echo 'get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
 #    echo "message ( STATUS \"FlagDefs: \" \${FlagDefs} )" >> ${OFN}
 
     echo >> ${OFN}
@@ -1024,9 +1017,20 @@ generate_main_cmake_file()
     echo 'if ( MINGW )' >> ${OFN}
     echo '  add_definitions ( -DflagWIN32 )' >> ${OFN}
     echo '  remove_definitions( -DflagLINUX )' >> ${OFN}
+    echo '  remove_definitions( -DflagPOSIX )' >> ${OFN}
     echo '  list ( APPEND main_LINK_LIST mingw32 )' >> ${OFN}
     echo '  string ( REGEX REPLACE "-O3" "" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} )' >> ${OFN}
     echo 'endif()' >> ${OFN}
+
+    echo >> ${OFN}
+    echo '# Function to create cpp source from iccp files' >> ${OFN}
+    echo 'function ( create_cpps_from_icpps )' >> ${OFN}
+    echo '    file ( GLOB icpp_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/*.icpp" )' >> ${OFN}
+    echo '    foreach ( icppFile ${icpp_files} )' >> ${OFN}
+    echo '        set ( output_file "${CMAKE_CURRENT_BINARY_DIR}/${icppFile}.cpp" )' >> ${OFN}
+    echo '        file ( WRITE "${output_file}" "#include \"${CMAKE_CURRENT_SOURCE_DIR}/${icppFile}\"\n" )' >> ${OFN}
+    echo '    endforeach()' >> ${OFN}
+    echo 'endfunction()' >> ${OFN}
 
     echo >> ${OFN}
     echo '# Import and set up required packages and libraries'>> ${OFN}
@@ -1093,6 +1097,13 @@ generate_main_cmake_file()
     echo 'endif ()' >> ${OFN}
 
     echo >> ${OFN}
+    echo '# Initialize definition flags' >> ${OFN}
+    echo 'get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
+    echo 'foreach( comp_def ${FlagDefs} )' >> ${OFN}
+    echo '  set ( ${comp_def} 1 )' >> ${OFN}
+    echo 'endforeach()' >> ${OFN}
+
+    echo >> ${OFN}
     echo "# Set include and library directories" >> ${OFN}
     echo "include_directories ( BEFORE \${CMAKE_CURRENT_SOURCE_DIR} )" >> ${OFN}
     echo "include_directories ( BEFORE ${UPP_SRC_DIR} )" >> ${OFN}
@@ -1147,8 +1158,13 @@ generate_main_cmake_file()
     echo ")" >> ${OFN}
 
     echo >> ${OFN}
+    echo '# Collect icpp files' >> ${OFN}
+    echo 'file ( GLOB_RECURSE cpp_ini_files "${CMAKE_CURRENT_BINARY_DIR}/../*.icpp.cpp" )' >> ${OFN}
+
+    echo >> ${OFN}
+    echo '# Main program definition' >> ${OFN}
     echo 'file ( WRITE ${PROJECT_BINARY_DIR}/null.cpp "" )' >> ${OFN}
-    echo "add_executable ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/null.cpp )" >> ${OFN}
+    echo "add_executable ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/null.cpp \${cpp_ini_files} )" >> ${OFN}
 
     echo >> ${OFN}
     echo "# Main program dependecies" >> ${OFN}
