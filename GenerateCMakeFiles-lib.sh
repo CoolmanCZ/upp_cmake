@@ -33,7 +33,8 @@ LINK_LIST="LINK_LIST"
 DEPEND_LIST="DEPEND_LIST"
 SOURCE_LIST="SOURCE_LIST"
 HEADER_LIST="HEADER_LIST"
-SOURCE_ICPP_LIST="SOURCE_ICPP_LIST"
+SOURCE_LIST_ICPP="SOURCE_LIST_ICPP"
+SOURCE_LIST_RC="SOURCE_LIST_RC"
 
 BIN_SUFFIX="-bin"
 LIB_SUFFIX="-lib"
@@ -43,6 +44,7 @@ RE_ZIP='[zZ][iI][pP]'
 RE_PNG='[pP][nN][gG]'
 RE_CPP='\.([cC]+[xXpP]{0,2})$'
 RE_ICPP='\.([iI][cC]+[xXpP]{0,2})$'
+RE_RC='\.(rc)$'
 RE_BRC='\.(brc)$'
 RE_USES='^uses\('
 RE_LINK='^link\('
@@ -50,10 +52,14 @@ RE_LIBRARY='^library\('
 RE_OPTIONS='^options\('
 RE_DEPEND='^uses$'
 RE_FILES='^file$'
+RE_MAINCONFIG='^mainconfig'
 RE_SEPARATOR='separator'
 RE_FILE_DOT='\.'
 RE_FILE_SPLIT='(options|charset|optimize_speed|highlight)'
 RE_FILE_EXCLUDE='(depends\(\))'
+
+FLAG_GUI=""
+FLAG_MT=""
 
 UPP_ALL_USES=()
 UPP_ALL_USES_DONE=()
@@ -326,7 +332,7 @@ list_parse()
 #    echo "\"list  : $list\""
 
     # Add optional dependency target to generate CMakeLists.txt
-    if [[ "${list}" =~ "$DEPEND_LIST" ]]; then
+    if [[ ${list} =~ "$DEPEND_LIST" ]]; then
         local -a new_parameters=(${parameters})
         parameters=""
         for item in ${new_parameters[@]}; do
@@ -387,72 +393,12 @@ options_parse()
     fi
 }
 
-binary_resource_create_asembly()
-{
-    local symbol_name="${1}"
-    local symbol_file_name="${2}"
-    local symbol_file_name_new="${3}"
-    local symbol_file_libname="${4}"
-    local symbol_file_compress="${5}"
-    local cust1="$6"
-
-    local compress_bin=""
-    local compress_ext=""
-    local compress_command=""
-
-    # Prepare compresses parameters
-    if [[ "${symbol_file_compress}" =~ $RE_BZIP2 ]]; then
-        compress_bin=$(which bzip2)
-        compress_ext=".bz2"
-        compress_command="COMMAND ${compress_bin} -k -f \${CMAKE_CURRENT_BINARY_DIR}/${symbol_file_name_new}"
-    elif [[ "${symbol_file_compress}" =~ $RE_ZIP ]]; then
-        compress_bin=$(which zip)
-        compress_ext=".zip"
-        compress_command="COMMAND ${compress_bin} ${symbol_file_name_new}${compress_ext} \${CMAKE_CURRENT_BINARY_DIR}/${symbol_file_name_new}"
-    fi
-
-    # Generate asembly file
-    echo "# ${symbol_file_libname}${LIB_SUFFIX} library (dependecy from binary resource file)" >> ${OFN}
-    echo "# Create library with binary resource (${symbol_name})" >> ${OFN}
-    echo "add_custom_command ( OUTPUT \"\${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}\"" >> ${OFN}
-    echo "  COMMAND mkdir -p `dirname \\${CMAKE_CURRENT_BINARY_DIR}/$symbol_file_name`" >> ${OFN}
-    echo "  COMMAND cp \"\${CMAKE_CURRENT_SOURCE_DIR}/${symbol_file_name}\" \"\${CMAKE_CURRENT_BINARY_DIR}/${symbol_file_name_new}\"" >> ${OFN}
-    if [ -n "${compress_command}" ]; then
-        echo "  ${compress_command}" >> ${OFN}
-        echo "  COMMAND mv \"${symbol_file_name_new}${compress_ext}\" \"${symbol_name}\"" >> ${OFN}
-    fi
-    echo ")" >> ${OFN}
-
-    echo "file ( WRITE \${CMAKE_CURRENT_BINARY_DIR}/${symbol_file_name_new}.C \"
-        .section .data
-        .global ${symbol_name}_
-        .type ${symbol_name}_, @object
-    ${symbol_name}_:
-        .incbin \\\"${symbol_name}\\\"
-        .global ${symbol_name}_end
-    ${symbol_name}_end:
-        .byte 0
-        .align  2
-        .global ${symbol_name}_length
-    ${symbol_name}_length:
-        .int ${symbol_name}_end - ${symbol_name}_
-        .align  2\"" >> ${OFN}
-    echo ")" >> ${OFN}
-
-    echo "list ( APPEND ${symbol_file_libname}_${SOURCE_LIST}_C" >> ${OFN}
-    echo "  \${CMAKE_CURRENT_BINARY_DIR}/${symbol_file_name_new}.C" >> ${OFN}
-    echo ")" >> ${OFN}
-    echo "set_source_files_properties ( \${CMAKE_CURRENT_BINARY_DIR}/${symbol_file_name_new}.C PROPERTIES OBJECT_DEPENDS \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )"  >> ${OFN}
-    echo "add_library ( ${symbol_file_libname}${LIB_SUFFIX}${cust1} \${${symbol_file_libname}_${SOURCE_LIST}_C} )" >> ${OFN}
-    echo "set_target_properties ( ${symbol_file_libname}${LIB_SUFFIX}${cust1} PROPERTIES COMPILE_FLAGS \"-x assembler-with-cpp\" )" >> ${OFN}
-    echo "set_target_properties ( ${symbol_file_libname}${LIB_SUFFIX}${cust1} PROPERTIES LINKER_LANGUAGE CXX )" >> ${OFN}
-
-}
-
 binary_resource_parse()
 {
     local parse_file="${1}"
     local line=""
+    local binary_array_first_def=""
+    local binary_mask_first_def=""
 
     if [ -n "${parse_file}" ] && [ -f "${parse_file}" ]; then
         local -a binary_array_names
@@ -468,13 +414,15 @@ binary_resource_parse()
                     local symbol_name=$(string_trim_spaces_both "${options_params[0]}")
                     local symbol_name_array=$(string_trim_spaces_both "${options_params[1]}")
                     local symbol_file_name=`echo "${options_params[2]}" | sed 's/.*"\(.*\)".*$/\1/'`
-                    local symbol_file_libname=`echo "${symbol_file_name}" | sed 's/[\/\.]/_/g'`
-                    local symbol_file_compress=`echo "${options_params[2]}" | sed 's/.*" \(.*\)$/\1/'`
+                    local symbol_file_compress=`echo "${options_params[3]}" | sed 's/.*" \(.*\)$/\1/'`
                 else
                     local symbol_name=$(string_trim_spaces_both "${options_params[0]}")
                     local symbol_file_name=`echo "${options_params[1]}" | sed 's/.*"\(.*\)".*$/\1/'`
-                    local symbol_file_libname=`echo "${symbol_file_name}" | sed 's/[\/\.]/_/g'`
                     local symbol_file_compress=`echo "${options_params[1]}" | sed 's/.*" \(.*\)$/\1/'`
+                fi
+
+                if [ -z "${symbol_file_compress}" ]; then
+                    symbol_file_compress="none"
                 fi
 
                 # Parse BINARY resources
@@ -482,45 +430,24 @@ binary_resource_parse()
 
                     echo >> ${OFN}
                     echo "# BINARY file" >> ${OFN}
-
-                    # Generate asembly file
-                    $(binary_resource_create_asembly "${symbol_name}" "${symbol_file_name}" "${symbol_name}" "${symbol_file_libname}" "${symbol_file_compress}")
-
-                    # Generate cpp file
-                    echo >> ${OFN}
-                    echo "# Create library which provide pointer to the begin of the binary resource (${symbol_name})" >> ${OFN}
-                    echo "file ( WRITE \${CMAKE_CURRENT_BINARY_DIR}/${symbol_file_libname}.cpp \"" >> ${OFN}
-                    echo "  extern unsigned char ${symbol_name}_[];" >> ${OFN}
-                    echo "  unsigned char *${symbol_name} = ${symbol_name}_;\"" >> ${OFN}
-                    echo ")" >> ${OFN}
-
-                    echo "list ( APPEND ${symbol_file_libname}_${SOURCE_LIST}_cpp" >> ${OFN}
-                    echo "  \${CMAKE_CURRENT_BINARY_DIR}/${symbol_file_libname}.cpp" >> ${OFN}
-                    echo ")" >> ${OFN}
-                    echo "add_library ( ${symbol_file_libname}${LIB_SUFFIX}_cpp \${${symbol_file_libname}_${SOURCE_LIST}_cpp} )" >> ${OFN}
-
-                    echo >> ${OFN}
-                    echo "# Append created libraries to the the module library" >> ${OFN}
-                    echo "list ( APPEND $LINK_LIST ${symbol_file_libname}${LIB_SUFFIX} ${symbol_file_libname}${LIB_SUFFIX}_cpp )" >> ${OFN}
+                    echo "create_brc_source ( ${symbol_file_name} ${symbol_name}.cpp ${symbol_name} ${symbol_file_compress} write )" >> ${OFN}
+                    echo "set_source_files_properties ( \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp PROPERTIES GENERATED TRUE )" >> ${OFN}
+                    echo "list ( APPEND ${SOURCE_LIST} \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp )" >> ${OFN}
 
                 # parse BINARY_ARRAY resources
                 elif [ "${parameter}" == "BINARY_ARRAY" ]; then
+
+                    local file_creation="append"
+                    if [ -z "${binary_array_first_def}" ]; then
+                        binary_array_first_def="done"
+                        file_creation="write"
+                    fi
 
                     binary_array_names+=("${symbol_name}_${symbol_name_array}")
 
                     echo >> ${OFN}
                     echo "# BINARY_ARRAY file" >> ${OFN}
-
-                    # Generate random file for library name
-                    local cust=".$RANDOM"
-
-                    # Store library name for DEPENDENCY LIST
-                    binary_array_names_library+=("${symbol_file_libname}${LIB_SUFFIX}${cust}")
-
-                    # Generate asembly file
-                    $(binary_resource_create_asembly "${symbol_name}_${symbol_name_array}" "${symbol_file_name}" "${symbol_name}_${symbol_name_array}" "${symbol_file_libname}" "${symbol_file_compress}" "${cust}")
-
-
+                    echo "create_brc_source ( ${symbol_file_name} binary_array.cpp ${symbol_name}_${symbol_name_array} ${symbol_file_compress} ${file_creation} )" >> ${OFN}
                 # parse BINARY_MASK resources
                 elif [ "${parameter}" == "BINARY_MASK" ]; then
 
@@ -534,16 +461,15 @@ binary_resource_parse()
                         for binary_file in "${binary_mask_files[@]}"; do
                             if [ -f "${binary_file}" ]; then
 
+                                local file_creation="append"
+                                if [ -z "${binary_mask_first_def}" ]; then
+                                    binary_mask_first_def="done"
+                                    file_creation="write"
+                                fi
+
                                 echo >> ${OFN}
                                 echo "# BINARY_MASK file" >> ${OFN}
-                                echo "# file ${all_count}: ${binary_file}" >> ${OFN}
-
-                                # Generate asembly file
-                                $(binary_resource_create_asembly "${symbol_name}_${all_count}" "${binary_file}" "${symbol_name}_${all_count}" "${symbol_name}_${all_count}" "${symbol_file_compress}")
-
-                            echo >> ${OFN}
-                            echo "# Append created libraries to the the module library" >> ${OFN}
-                            echo "list ( APPEND $LINK_LIST ${symbol_name}_${all_count}${LIB_SUFFIX} )" >> ${OFN}
+                                echo "create_brc_source ( ${binary_file} ${symbol_name}.cpp ${symbol_name}_${all_count} ${symbol_file_compress} ${file_creation} )" >> ${OFN}
 
                                 all_array_files+=("$(basename "${binary_file}")")
                                 (( all_count++ ))
@@ -552,54 +478,32 @@ binary_resource_parse()
 
                         # Generate cpp file for the BINARY_MASK
                         echo >> ${OFN}
-                        echo "# Create library which provide pointers to the begin of the binary resource (${symbol_name})" >> ${OFN}
-                        echo "file ( WRITE \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp \"" >> ${OFN}
-                        echo "  int ${symbol_name}_count = ${all_count};" >> ${OFN}
+                        echo "# Append additional information of the BINARY_MASK binary resource (${symbol_name})" >> ${OFN}
+                        echo "file ( APPEND \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp \"" >> ${OFN}
+                        echo "int ${symbol_name}_count = ${all_count};" >> ${OFN}
 
-                        local i
+                        echo "int ${symbol_name}_length[] = {" >> ${OFN}
                         for (( i=0; i<${all_count}; i++ )); do
-                            echo "  extern unsigned char ${symbol_name}_${i}_[];" >> ${OFN}
-                            echo "  extern int ${symbol_name}_${i}_length;" >> ${OFN}
+                            echo "  ${symbol_name}_${i}_length," >> ${OFN}
                         done
+                        echo "};" >> ${OFN}
 
-                        echo "  unsigned char *${symbol_name}[] = {" >> ${OFN}
+                        echo "unsigned char *${symbol_name}[] = {" >> ${OFN}
                         for (( i=0; i<${all_count}; i++ )); do
-                            echo "      ${symbol_name}_${i}_," >> ${OFN}
+                            echo "  ${symbol_name}_${i}_," >> ${OFN}
                         done
-                        echo "  };" >> ${OFN}
+                        echo "};" >> ${OFN}
 
-                        echo "  char const *${symbol_name}_files[] = {" >> ${OFN}
+                        echo "char const *${symbol_name}_files[] = {" >> ${OFN}
                         local binary_filename=""
                         for binary_file_name in "${all_array_files[@]}"; do
-                            echo "      \\\"${binary_file_name}\\\"," >> ${OFN}
+                            echo "  \\\"${binary_file_name}\\\"," >> ${OFN}
                         done
-                        echo "  };" >> ${OFN}
+                        echo "};" >> ${OFN}
 
-                        echo "  int ${symbol_name}_length[] = {" >> ${OFN}
-                        for (( i=0; i<${all_count}; i++ )); do
-                            echo "      ${symbol_name}_${i}_length," >> ${OFN}
-                        done
-                        echo "  };" >> ${OFN}
                         echo "\")" >> ${OFN}
-
-                        echo >> ${OFN}
-                        echo "list ( APPEND ${symbol_name}_${DEPEND_LIST}" >> ${OFN}
-                        for (( i=0; i<${all_count}; i++ )); do
-                            echo " ${symbol_name}_${i}${LIB_SUFFIX}" >> ${OFN}
-                        done
-                        echo ")" >> ${OFN}
-
-                        echo >> ${OFN}
-                        echo "list ( APPEND ${symbol_name}_${SOURCE_LIST}_cpp" >> ${OFN}
-                        echo "  \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp" >> ${OFN}
-                        echo ")" >> ${OFN}
-                        echo "add_library ( ${symbol_name}${LIB_SUFFIX}_cpp \${${symbol_name}_${SOURCE_LIST}_cpp} )" >> ${OFN}
-                        echo "add_dependencies ( ${symbol_name}${LIB_SUFFIX}_cpp \${${symbol_name}_${DEPEND_LIST}} )" >> ${OFN}
-                        echo "target_link_libraries ( ${symbol_name}${LIB_SUFFIX}_cpp \${${symbol_name}_${DEPEND_LIST}} )" >> ${OFN}
-
-                        echo >> ${OFN}
-                        echo "# Append created libraries to the the module library" >> ${OFN}
-                        echo "list ( APPEND $LINK_LIST ${symbol_name}${LIB_SUFFIX}_cpp )" >> ${OFN}
+                        echo "set_source_files_properties ( \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp PROPERTIES GENERATED TRUE )" >> ${OFN}
+                        echo "list ( APPEND ${SOURCE_LIST} \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp )" >> ${OFN}
 
                     else
                         echo >> ${OFN}
@@ -613,12 +517,11 @@ binary_resource_parse()
 
         # Generate cpp file for the BINARY_ARRAY
         if [ -n "${binary_array_names}" ]; then
-            symbol_name="binary_array_$RANDOM"
             local -a binary_array_names_sorted
             OLD_IFS="${IFS}"; export LC_ALL=C; IFS=$'\n' binary_array_names_sorted=($(sort -u <<<"${binary_array_names[*]}")); IFS="${OLD_IFS}"
 
-            echo "# ${binary_array_names[@]}" >> ${OFN}
-            echo "# ${binary_array_names_sorted[@]}" >> ${OFN}
+#           echo "# ${binary_array_names[@]}" >> ${OFN}
+#           echo "# ${binary_array_names_sorted[@]}" >> ${OFN}
 
             local test_first_iteration
             local binary_array_name_count=0
@@ -626,14 +529,9 @@ binary_resource_parse()
             local binary_array_name_first
             local binary_array_name_second
 
-            echo "# Create library which provide pointers to the begin of the binary resource (${symbol_name})" >> ${OFN}
-            echo "file ( WRITE \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp \"" >> ${OFN}
-
-            for binary_array_record in "${binary_array_names_sorted[@]}"; do
-                echo "  extern unsigned char ${binary_array_record}_[];" >> ${OFN}
-                echo "  extern int ${binary_array_record}_length;" >> ${OFN}
-            done
             echo >> ${OFN}
+            echo "# Append additional information of the BINARY_ARRAY binary resource (${symbol_name})" >> ${OFN}
+            echo "file ( APPEND \${CMAKE_CURRENT_BINARY_DIR}/binary_array.cpp \"" >> ${OFN}
 
             for binary_array_record in "${binary_array_names_sorted[@]}"; do
                 binary_array_name_split=(${binary_array_record//_/ })
@@ -641,46 +539,29 @@ binary_resource_parse()
                     if [ -z ${test_first_iteration} ]; then
                         test_first_iteration="done"
                     else
-                        echo "  int ${binary_array_name_test}_count = ${binary_array_name_count};" >> ${OFN}
+                        echo "int ${binary_array_name_test}_count = ${binary_array_name_count};" >> ${OFN}
                         echo -e "${binary_array_name_first}" >> ${OFN}
-                        echo -e "   };\n" >> ${OFN}
+                        echo -e "};\n" >> ${OFN}
                         echo -e "${binary_array_name_second}" >> ${OFN}
-                        echo -e "   };\n" >> ${OFN}
+                        echo -e "};\n" >> ${OFN}
                         binary_array_name_count=0
                     fi
                     binary_array_name_test=${binary_array_name_split[0]};
-                    binary_array_name_first="   int ${binary_array_name_split[0]}_length[] = {"
-                    binary_array_name_second="  unsigned char *${binary_array_name_split[0]}[] = {"
+                    binary_array_name_first="int ${binary_array_name_split[0]}_length[] = {"
+                    binary_array_name_second="unsigned char *${binary_array_name_split[0]}[] = {"
                 fi
                 (( binary_array_name_count++ ))
                 binary_array_name_first+="\n    ${binary_array_record}_length,"
                 binary_array_name_second+="\n   ${binary_array_record}_,"
             done
-            echo "  int ${binary_array_name_test}_count = ${binary_array_name_count};" >> ${OFN}
+            echo "int ${binary_array_name_test}_count = ${binary_array_name_count};" >> ${OFN}
             echo -e "${binary_array_name_first}" >> ${OFN}
-            echo -e "   };\n" >> ${OFN}
+            echo -e "};" >> ${OFN}
             echo -e "${binary_array_name_second}" >> ${OFN}
-            echo -e "   };" >> ${OFN}
+            echo -e "};" >> ${OFN}
             echo "\")" >> ${OFN}
-
-            echo >> ${OFN}
-            echo "list ( APPEND ${symbol_name}_${DEPEND_LIST}" >> ${OFN}
-            for binary_array_name_lib in ${binary_array_names_library[@]}; do
-                echo " ${binary_array_name_lib}" >> ${OFN}
-            done
-            echo ")" >> ${OFN}
-
-            echo >> ${OFN}
-            echo "list ( APPEND ${symbol_name}_${SOURCE_LIST}_cpp" >> ${OFN}
-            echo "  \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp" >> ${OFN}
-            echo ")" >> ${OFN}
-            echo "add_library ( ${symbol_name}${LIB_SUFFIX}_cpp \${${symbol_name}_${SOURCE_LIST}_cpp} )" >> ${OFN}
-            echo "add_dependencies ( ${symbol_name}${LIB_SUFFIX}_cpp \${${symbol_name}_${DEPEND_LIST}} )" >> ${OFN}
-            echo "target_link_libraries ( ${symbol_name}${LIB_SUFFIX}_cpp \${${symbol_name}_${DEPEND_LIST}} )" >> ${OFN}
-
-            echo >> ${OFN}
-            echo "# Append created libraries to the the module library" >> ${OFN}
-            echo "list ( APPEND $LINK_LIST ${symbol_name}${LIB_SUFFIX}_cpp )" >> ${OFN}
+            echo "set_source_files_properties ( \${CMAKE_CURRENT_BINARY_DIR}/binary_array.cpp PROPERTIES GENERATED TRUE )" >> ${OFN}
+            echo "list ( APPEND ${SOURCE_LIST} \${CMAKE_CURRENT_BINARY_DIR}/binary_array.cpp )" >> ${OFN}
         fi
     else
         echo "File \"${parse_file}\" not found!"
@@ -719,12 +600,15 @@ generate_cmake_from_upp()
 {
     local upp_ext="${1}"
     local object_name="${2}"
+    local main_target="${3}"
     local USES=()
     local HEADER=()
     local SOURCE=()
+    local SOURCE_RC=()
     local SOURCE_ICPP=()
     local uses_start=""
     local files_start=""
+    local mainconfig_start=""
     local tmp=""
     local list=""
     local line=""
@@ -776,6 +660,17 @@ generate_cmake_from_upp()
                 files_start=""
             fi
 
+            # Begin of mainconfig section
+            if [[ ${line} =~ $RE_MAINCONFIG ]]; then
+                mainconfig_start="1"
+                continue
+            fi
+
+            # End of mainconfig section (by empty line)
+            if [ -n "${mainconfig_start}" ] && [ -z "${line}" ]; then
+                mainconfig_start=""
+            fi
+
             # Skip lines with "separator" mark
             if [ -n "${files_start}" ] && [[ ${line} =~ $RE_SEPARATOR ]]; then
                 continue;
@@ -800,14 +695,16 @@ generate_cmake_from_upp()
                     if [ ! -f "${list}" ]; then
                         echo "WARNING - \"${list}\" doesn't exist! It was not added to the list."
                     else
-                        if [[ "${list}" =~ $RE_CPP ]]; then         # C/C++ source files
+                        if [[ ${list} =~ $RE_CPP ]]; then         # C/C++ source files
                             SOURCE+=(${list})
-                        elif [[ "${list}" =~ $RE_ICPP ]]; then      # icpp C/C++ source files
+                        elif [[ ${list} =~ $RE_RC ]]; then        # Windows resource config files
+                            SOURCE_RC+=(${list})
+                        elif [[ ${list} =~ $RE_ICPP ]]; then      # icpp C/C++ source files
                             SOURCE_ICPP+=(${list})
-                        elif [[ "${list}" =~ $RE_BRC ]]; then       # BRC resource files
+                        elif [[ ${list} =~ $RE_BRC ]]; then       # BRC resource files
                             $(binary_resource_parse "$list")
                             HEADER+=(${list})
-                        elif [[ "${list}" =~ $RE_FILE_DOT ]]; then  # header files
+                        elif [[ ${list} =~ $RE_FILE_DOT ]]; then  # header files
                             HEADER+=(${list})
                         fi
                     fi
@@ -819,6 +716,16 @@ generate_cmake_from_upp()
                 tmp="${line//,}"
                 USES+=(${tmp//;})
                 UPP_ALL_USES+=(${tmp//;})
+            fi
+
+            # Parse mainconfig
+            if [ -n "${mainconfig_start}" ]; then
+                if [[ ${line} =~ "GUI" ]]; then
+                    FLAG_GUI="1"
+                fi
+                if [[ ${line} =~ "MT" ]]; then
+                    FLAG_MT="1"
+                fi
             fi
 
         done < <(sed 's#\\#/#g' "${upp_ext}")
@@ -846,7 +753,7 @@ generate_cmake_from_upp()
         # Create icpp source files list
         if [ -n ${SOURCE_ICPP} ] ; then
             echo >> ${OFN}
-            echo "list ( APPEND ${SOURCE_ICPP_LIST}" >> ${OFN}
+            echo "list ( APPEND ${SOURCE_LIST_ICPP}" >> ${OFN}
             for list in "${SOURCE_ICPP[@]}"; do
                 echo "      ${list}" >> ${OFN}
             done
@@ -864,11 +771,38 @@ generate_cmake_from_upp()
             echo ")" >> ${OFN}
         fi
 
+        # Copy Windows resource config file
+        if [ -n "${main_target}" ] && [ -n "${SOURCE_RC}" ] ; then
+            for list in "${SOURCE_RC[@]}"; do
+                if [ -f "${list}" ]; then
+                    echo >> ${OFN}
+                    echo "# Copy Windows resource config file to the main program build directory" >> ${OFN}
+                    local line_rc_params=()
+                    while read line_rc; do
+                        if [[ ${line_rc} =~ ICON ]]; then
+                            line_rc_params=(${line_rc})
+                            echo "file ( COPY ${list} DESTINATION \${PROJECT_BINARY_DIR} )" >> ${OFN}
+                            echo "file ( COPY ${line_rc_params[3]} DESTINATION \${PROJECT_BINARY_DIR} )" >> ${OFN}
+                            break
+                        fi
+                    done < ${list}
+                fi
+            done
+        fi
+
+        echo >> ${OFN}
+        echo '# icpp files processing' >> ${OFN}
+        echo "foreach ( icppFile \${$SOURCE_LIST_ICPP} )" >> ${OFN}
+        echo '  set ( output_file "${CMAKE_CURRENT_BINARY_DIR}/${icppFile}.cpp" )' >> ${OFN}
+        echo '  file ( WRITE "${output_file}" "#include \"${CMAKE_CURRENT_SOURCE_DIR}/${icppFile}\"\n" )' >> ${OFN}
+        echo "  list ( APPEND ${SOURCE_LIST} \${output_file} )" >> ${OFN}
+        echo 'endforeach()' >> ${OFN}
+
         echo >> ${OFN}
         echo "# Module properties" >> ${OFN}
         echo "create_cpps_from_icpps()" >> ${OFN}
         echo "set_source_files_properties ( \${$HEADER_LIST} PROPERTIES HEADER_FILE_ONLY ON )" >> ${OFN}
-        echo "add_library ( ${target_name}${LIB_SUFFIX} \${INIT_FILE} \${$SOURCE_LIST} \${$HEADER_LIST} )" >> ${OFN}
+        echo "add_library ( ${target_name}${LIB_SUFFIX} \${INIT_FILE} \${$SOURCE_LIST} )" >> ${OFN}
 
         echo >> ${OFN}
         echo "# Module dependecies" >> ${OFN}
@@ -918,7 +852,12 @@ generate_cmake_file()
             echo "add_definitions ( "${cmake_flags}" )" >> ${OFN}
         fi
 
-        generate_cmake_from_upp "${upp_name}" "${object_name}"
+        local main_target=""
+        if [[ ${cmake_flags} =~ (flagMAIN) ]]; then
+            main_target="true"
+        fi
+
+        generate_cmake_from_upp "${upp_name}" "${object_name}" "${main_target}"
 
         cd ${cur_dir}
     else
@@ -981,23 +920,67 @@ generate_main_cmake_file()
     echo "# Project definitions" >> ${OFN}
     echo "add_definitions ( "${main_definitions}" )" >> ${OFN}
 
+#    if [ -n "${FLAG_MT}" ]; then
+#        echo 'add_definitions ( -DflagMT )' >> ${OFN}
+#    fi
+#    if [ -n "${FLAG_GUI}" ]; then
+#        echo 'add_definitions ( -DflagGUI )' >> ${OFN}
+#    fi
+
     echo >> ${OFN}
     echo '# Read compiler definitions - used to set appropriate modules' >> ${OFN}
     echo 'get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
 #    echo "message ( STATUS \"FlagDefs: \" \${FlagDefs} )" >> ${OFN}
 
     echo >> ${OFN}
-    echo "# Enable/disable verbose output" >> ${OFN}
+    echo '# Enable/disable verbose output and set debug/release parameters' >> ${OFN}
     echo 'if ( "${FlagDefs}" MATCHES "flagDEBUG" )' >> ${OFN}
-    echo "  set ( CMAKE_BUILD_TYPE Debug )" >> ${OFN}
-    echo "  set ( CMAKE_VERBOSE_MAKEFILE 1 )" >> ${OFN}
-    echo "else()" >> ${OFN}
-    echo "  set ( CMAKE_BUILD_TYPE Release )" >> ${OFN}
+    echo '  set ( CMAKE_VERBOSE_MAKEFILE 1 )' >> ${OFN}
+    echo '  set ( CMAKE_BUILD_TYPE Debug )' >> ${OFN}
+    echo '  add_definitions ( -D_DEBUG )' >> ${OFN}
+    echo '  if ( NOT "${FlagDefs}" MATCHES "(flagDEBUG)$" )' >> ${OFN}
+    echo '      add_definitions ( -DflagDEBUG )' >> ${OFN}
+    echo '      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
+    echo '  endif ()' >> ${OFN}
+    echo 'else()' >> ${OFN}
+    echo '  set ( CMAKE_BUILD_TYPE Release )' >> ${OFN}
+    echo '  add_definitions ( -D_RELEASE )' >> ${OFN}
     echo 'endif ()' >> ${OFN}
-    echo "message ( STATUS \"Build type: \" \${CMAKE_BUILD_TYPE} )" >> ${OFN}
+    echo 'message ( STATUS "Build type: " ${CMAKE_BUILD_TYPE} )' >> ${OFN}
 
     echo >> ${OFN}
-    echo '# Set compiler flags' >> ${OFN}
+    echo 'if ( "${FlagDefs}" MATCHES "flagSHARED" )' >> ${OFN}
+    echo '  message ( STATUS "Build with shared flag: TRUE" )' >> ${OFN}
+    echo '  if ( CMAKE_COMPILER_IS_GNUCC )' >> ${OFN}
+    echo '      set ( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fPIC -fuse-cxa-atexit" )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo 'else()' >> ${OFN}
+    echo '  message ( STATUS "Build with shared flag: FALSE" )' >> ${OFN}
+    echo '  if ( MINGW )' >> ${OFN}
+    echo '      set ( CMAKE_FIND_LIBRARY_SUFFIXES .lib .a ${CMAKE_FIND_LIBRARY_SUFFIXES} )' >> ${OFN}
+    echo '      set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc" )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '  set ( CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
+    echo '  set ( CMAKE_CXX_ARCHIVE_APPEND "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
+    echo '  set ( CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
+    echo '  set ( CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
+    echo 'endif()' >> ${OFN}
+
+    echo >> ${OFN}
+    echo 'if ( "${FlagDefs}" MATCHES "flagGCC32" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )' >> ${OFN}
+    echo '  message ( STATUS "Build compilation: 32 bits" )' >> ${OFN}
+    echo '  set ( EXTRA_CFLAGS "${EXTRA_CFLAGS} -m32" )' >> ${OFN}
+    echo '  if ( NOT "${FlagDefs}" MATCHES "(flagGCC32)$" )' >> ${OFN}
+    echo '      add_definitions ( -DflagGCC32 )' >> ${OFN}
+    echo '      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo 'else()' >> ${OFN}
+    echo '  message ( STATUS "Build compilation: 64 bits" )' >> ${OFN}
+    echo 'endif()' >> ${OFN}
+
+    echo >> ${OFN}
+    echo '# Set CLANG compiler flags' >> ${OFN}
     echo 'if ( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )' >> ${OFN}
     echo '  set ( CMAKE_COMPILER_IS_CLANG TRUE )' >> ${OFN}
     echo '  set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-logical-op-parentheses" )' >> ${OFN}
@@ -1007,23 +990,68 @@ generate_main_cmake_file()
     echo 'if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )' >> ${OFN}
     echo '  set ( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -std=c++11 -O3 -ffunction-sections -fdata-sections" )' >> ${OFN}
     echo '  set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -std=c++11 -O0" )' >> ${OFN}
+    echo '  if ( "${FlagDefs}" MATCHES "flagDEBUG_MINIMAL" )' >> ${OFN}
+    echo '      if ( NOT MINGW )' >> ${OFN}
+    echo '          set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ggdb" )' >> ${OFN}
+    echo '          set ( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -ggdb" )' >> ${OFN}
+    echo '      endif ()' >> ${OFN}
+    echo '      set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g1" )' >> ${OFN}
+    echo '      set ( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g1" )' >> ${OFN}
+    echo '  endif ()' >> ${OFN}
+    echo '  if ( "${FlagDefs}" MATCHES "flagDEBUG_FULL" )' >> ${OFN}
+    echo '      if ( NOT MINGW )' >> ${OFN}
+    echo '          set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ggdb" )' >> ${OFN}
+    echo '          set ( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -ggdb" )' >> ${OFN}
+    echo '      endif ()' >> ${OFN}
+    echo '      set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g2" )' >> ${OFN}
+    echo '      set ( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g2" )' >> ${OFN}
+    echo '  endif ()' >> ${OFN}
     echo 'elseif ( MSVC )' >> ${OFN}
     echo '  set ( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -GS-" )' >> ${OFN}
     echo '  set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Zi" )' >> ${OFN}
     echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
-    echo '# The optimalization might be broken on MinGW - remove optimalization flag (cross compile).' >> ${OFN}
     echo 'if ( MINGW )' >> ${OFN}
     echo '  add_definitions ( -DflagWIN32 )' >> ${OFN}
     echo '  remove_definitions( -DflagLINUX )' >> ${OFN}
     echo '  remove_definitions( -DflagPOSIX )' >> ${OFN}
-    echo '  list ( APPEND main_LINK_LIST mingw32 )' >> ${OFN}
+    echo >> ${OFN}
+    echo '  set ( EXTRA_CFLAGS "${EXTRA_CFLAGS} -mwindows" )' >> ${OFN}
+    echo >> ${OFN}
+    echo '  if ( "${FlagDefs}" MATCHES "flagDLL" )' >> ${OFN}
+    echo '      set ( BUILD_SHARED_LIBS ON )' >> ${OFN}
+    echo '      set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -shared" )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '  if ("${FlagDefs}" MATCHES "flagGUI" )' >> ${OFN}
+    echo "      list ( APPEND main_${LINK_LIST} mingw32 )" >> ${OFN}
+    echo '  else()' >> ${OFN}
+    echo '      set ( EXTRA_CFLAGS "${EXTRA_CFLAGS} -mconsole" )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '  if ( "${FlagDefs}" MATCHES "flagMT" )' >> ${OFN}
+    echo '      set ( EXTRA_CFLAGS "${EXTRA_CFLAGS} -mthreads" )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '  # The optimalization might be broken on MinGW - remove optimalization flag (cross compile).' >> ${OFN}
     echo '  string ( REGEX REPLACE "-O3" "" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} )' >> ${OFN}
+#    echo >> ${OFN}
+#    echo '  # To compile windows resource file' >> ${OFN}
+#    echo '  enable_language ( RC )' >> ${OFN}
+#    echo '  set ( CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> <DEFINES> -O coff -o <OBJECT> <SOURCE>" )' >> ${OFN}
+    echo >> ${OFN}
+    echo '  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
     echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
-    echo '# Function to create cpp source from iccp files' >> ${OFN}
+    echo 'set ( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${EXTRA_CFLAGS}" )' >> ${OFN}
+    echo 'set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${EXTRA_CFLAGS}" )' >> ${OFN}
+    echo 'set ( CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${EXTRA_CFLAGS}" )' >> ${OFN}
+    echo 'set ( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${EXTRA_CFLAGS}" )' >> ${OFN}
+
+    echo >> ${OFN}
+    echo '# Function to create cpp source from icpp files' >> ${OFN}
     echo 'function ( create_cpps_from_icpps )' >> ${OFN}
     echo '    file ( GLOB icpp_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/*.icpp" )' >> ${OFN}
     echo '    foreach ( icppFile ${icpp_files} )' >> ${OFN}
@@ -1033,7 +1061,59 @@ generate_main_cmake_file()
     echo 'endfunction()' >> ${OFN}
 
     echo >> ${OFN}
-    echo '# Import and set up required packages and libraries'>> ${OFN}
+    echo '# Function to create cpp source file from binary resource definition' >> ${OFN}
+    echo 'function ( create_brc_source input_file output_file symbol_name compression symbol_append )' >> ${OFN}
+    echo >> ${OFN}
+    echo '    if ( NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${input_file} )' >> ${OFN}
+    echo '        message ( FATAL_ERROR "Input file does not exist: ${CMAKE_CURRENT_SOURCE_DIR}/${input_file}" )' >> ${OFN}
+    echo '    endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '    file ( REMOVE ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
+    echo >> ${OFN}
+    echo '    if ( ${compression} MATCHES "[bB][zZ]2" )' >> ${OFN}
+    echo '        set ( COMPRESS_SUFFIX "bz2" )' >> ${OFN}
+    echo '        set ( COMMAND_COMPRESS bzip2 -k -f ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
+    echo '    elseif ( ${compression} MATCHES "[zZ][iI][pP]" )' >> ${OFN}
+    echo '        set ( COMPRESS_SUFFIX "zip" )' >> ${OFN}
+    echo '        set ( COMMAND_COMPRESS zip ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.${COMPRESS_SUFFIX} ${symbol_name} )' >> ${OFN}
+    echo '    endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '    set ( COMMAND_COPY cp ${CMAKE_CURRENT_SOURCE_DIR}/${input_file} ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
+    echo '    set ( COMMAND_MOVE mv ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.${COMPRESS_SUFFIX} ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
+    echo >> ${OFN}
+    echo '    execute_process ( COMMAND ${COMMAND_COPY} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} )' >> ${OFN}
+    echo '    if ( COMMAND_COMPRESS )' >> ${OFN}
+    echo '        execute_process ( COMMAND ${COMMAND_COMPRESS} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} OUTPUT_VARIABLE XXXX )' >> ${OFN}
+    echo '        execute_process ( COMMAND ${COMMAND_MOVE} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} )' >> ${OFN}
+    echo '    endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '    file ( READ ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} hex_string HEX )' >> ${OFN}
+    echo >> ${OFN}
+    echo '    set ( CURINDEX 0 )' >> ${OFN}
+    echo '    string ( LENGTH "${hex_string}" CURLENGTH )' >> ${OFN}
+    echo '    math ( EXPR FILELENGTH "${CURLENGTH} / 2" )' >> ${OFN}
+    echo '    set ( ${hex_string} 0)' >> ${OFN}
+    echo >> ${OFN}
+    echo '    set ( output_string "static unsigned char ${symbol_name}_[] = {\n" )' >> ${OFN}
+    echo '    while ( CURINDEX LESS CURLENGTH )' >> ${OFN}
+    echo '      string ( SUBSTRING "${hex_string}" ${CURINDEX} 2 CHAR )' >> ${OFN}
+    echo '      set ( output_string "${output_string} 0x${CHAR}," )' >> ${OFN}
+    echo '      math ( EXPR CURINDEX "${CURINDEX} + 2" )' >> ${OFN}
+    echo '    endwhile()' >> ${OFN}
+    echo '    set ( output_string "${output_string} 0x00 }\;\n\n" )' >> ${OFN}
+    echo '    set ( output_string "${output_string}unsigned char *${symbol_name} = ${symbol_name}_\;\n\n" )' >> ${OFN}
+    echo '    set ( output_string "${output_string}int ${symbol_name}_length = ${FILELENGTH}\;\n\n" )' >> ${OFN}
+    echo >> ${OFN}
+    echo '    if ( ${symbol_append} MATCHES "append" )' >> ${OFN}
+    echo '        file ( APPEND ${CMAKE_CURRENT_BINARY_DIR}/${output_file} ${output_string} )' >> ${OFN}
+    echo '    else()' >> ${OFN}
+    echo '        file ( WRITE ${CMAKE_CURRENT_BINARY_DIR}/${output_file} ${output_string} )' >> ${OFN}
+    echo '    endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo 'endfunction()' >> ${OFN}
+
+    echo >> ${OFN}
+    echo '# Import and set up required packages and libraries' >> ${OFN}
     echo 'if ( NOT WIN32 )' >> ${OFN}
     echo '  find_package ( Freetype )' >> ${OFN}
     echo '  if ( FREETYPE_FOUND )' >> ${OFN}
@@ -1059,12 +1139,6 @@ generate_main_cmake_file()
     echo '  if ( X11_FOUND )' >> ${OFN}
     echo '      include_directories ( ${X11_INCLUDE_DIR} )' >> ${OFN}
     echo "      list ( APPEND main_${LINK_LIST} \${X11_LIBRARIES} )" >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  find_package ( PNG )' >> ${OFN}
-    echo '  if ( PNG_FOUND )' >> ${OFN}
-    echo '      include_directories( ${PNG_INCLUDE_DIR} )' >> ${OFN}
-    echo "      list ( APPEND main_${LINK_LIST} \${PNG_LIBRARIES} )" >> ${OFN}
     echo '  endif()' >> ${OFN}
     echo >> ${OFN}
     echo '  find_package ( BZip2 REQUIRED )' >> ${OFN}
@@ -1112,6 +1186,7 @@ generate_main_cmake_file()
     echo '# Include dependent directories of the project' >> ${OFN}
     while [ ${#UPP_ALL_USES_DONE[@]} -lt ${#UPP_ALL_USES[@]} ]; do
         local process_upp=$(get_upp_to_process)
+        local png_lib_added=""
 #        echo "num of elements all : ${#UPP_ALL_USES[@]}"
 #        echo "num of elements done: ${#UPP_ALL_USES_DONE[@]}"
 #        echo "process_upp=\"${process_upp}\""
@@ -1124,12 +1199,15 @@ generate_main_cmake_file()
                 generate_cmake_file ${UPP_SRC_DIR}/${process_upp}/${process_upp}.upp "${process_upp}"
             fi
             echo "add_subdirectory ( ${UPP_SRC_DIR}/${process_upp} )" >> ${OFN}
-            if [[ "${process_upp}" =~ $RE_PNG ]]; then
+            if [ -z "${png_lib_added}" ] && [[ "${process_upp}" =~ $RE_PNG ]]; then
+                png_lib_added="done"
                 echo >> ${OFN}
-                echo '# Add PNG library for MINGW compilation' >> ${OFN}
-                echo 'if ( MINGW )' >> ${OFN}
-                echo "      list ( APPEND MAIN_TARGET_LINK_LIBRARY png )" >> ${OFN}
-                echo 'endif ()' >> ${OFN}
+                echo '# Add PNG library' >> ${OFN}
+                echo 'find_package ( PNG REQUIRED )' >> ${OFN}
+                echo 'if ( PNG_FOUND )' >> ${OFN}
+                echo '  include_directories( ${PNG_INCLUDE_DIR} )' >> ${OFN}
+                echo "  list ( APPEND main_${LINK_LIST} \${PNG_LIBRARIES} )" >> ${OFN}
+                echo 'endif()' >> ${OFN}
                 echo >> ${OFN}
             fi
         fi
@@ -1162,9 +1240,15 @@ generate_main_cmake_file()
     echo 'file ( GLOB_RECURSE cpp_ini_files "${CMAKE_CURRENT_BINARY_DIR}/../*.icpp.cpp" )' >> ${OFN}
 
     echo >> ${OFN}
+    echo '# Collect windows resource config file' >> ${OFN}
+    echo 'if ( WIN32 )' >> ${OFN}
+    echo '  file ( GLOB rc_file "${PROJECT_BINARY_DIR}/*.rc" )' >> ${OFN}
+    echo 'endif()' >> ${OFN}
+
+    echo >> ${OFN}
     echo '# Main program definition' >> ${OFN}
     echo 'file ( WRITE ${PROJECT_BINARY_DIR}/null.cpp "" )' >> ${OFN}
-    echo "add_executable ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/null.cpp \${cpp_ini_files} )" >> ${OFN}
+    echo "add_executable ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/null.cpp \${rc_file} \${cpp_ini_files} )" >> ${OFN}
 
     echo >> ${OFN}
     echo "# Main program dependecies" >> ${OFN}
