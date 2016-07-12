@@ -71,19 +71,6 @@ test_required_binaries()
     local my_sort=$(which sort)
     local my_date=$(which date)
 
-    # Requirements for building the target
-    local my_zip=$(which zip)
-    local my_bzip2=$(which bzip2)
-
-    local my_mv=$(which mv)
-    local my_cp=$(which cp)
-    local my_mkdir=$(which mkdir)
-
-    # Requirements for building the target - not used (see TODO)
-#    local my_xxd=$(which xxd)
-#    local my_ld=$(which ld)
-#    local my_objcopy=$(which objcopy)
-
     if [ -z "${my_sed}" ] || [ -z "${my_sort}" ] || [ -z "${my_date}" ]; then
         echo "ERROR - Requirement for generating the CMakeList files failed."
         echo "ERROR - Can't continue -> Exiting!"
@@ -91,16 +78,6 @@ test_required_binaries()
         echo "sort=\"${my_sort}\""
         echo "date=\"${my_date}\""
         exit 1
-    fi
-
-    if [ -z "${my_zip}" ] || [ -z "${my_bzip2}" ] || [ -z "${my_mv}" ] || [ -z "${my_cp}" ] || [ -z "${my_mkdir}" ]; then
-        echo "WARNING - Requirements for building the target failed."
-        echo "WARNING - Continue with generating the CMakeList files."
-        echo "zip=\"${my_zip}\""
-        echo "bzip2=\"${my_bzip2}\""
-        echo "mv=\"${my_mv}\""
-        echo "cp=\"${my_cp}\""
-        echo "mkdir=\"${my_mkdir}\""
     fi
 }
 
@@ -1019,7 +996,7 @@ generate_main_cmake_file()
     echo '# Set CLANG compiler flags' >> ${OFN}
     echo 'if ( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )' >> ${OFN}
     echo '  set ( CMAKE_COMPILER_IS_CLANG TRUE )' >> ${OFN}
-    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -Wno-logical-op-parentheses" )' >> ${OFN}
+    echo '  set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-logical-op-parentheses" )' >> ${OFN}
     echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
@@ -1052,10 +1029,6 @@ generate_main_cmake_file()
     echo >> ${OFN}
     echo '      # The optimalization might be broken on MinGW - remove optimalization flag (cross compile).' >> ${OFN}
     echo '      string ( REGEX REPLACE "-O3" "" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} )' >> ${OFN}
-#    echo >> ${OFN}
-#    echo '     # To compile windows resource file' >> ${OFN}
-#    echo '     enable_language ( RC )' >> ${OFN}
-#    echo '     set ( CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> <DEFINES> -O coff -o <OBJECT> <SOURCE>" )' >> ${OFN}
     echo >> ${OFN}
     echo '      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
     echo '  endif()' >> ${OFN}
@@ -1073,61 +1046,68 @@ generate_main_cmake_file()
     echo >> ${OFN}
     echo '# Function to create cpp source from icpp files' >> ${OFN}
     echo 'function ( create_cpps_from_icpps )' >> ${OFN}
-    echo '    file ( GLOB icpp_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/*.icpp" )' >> ${OFN}
-    echo '    foreach ( icppFile ${icpp_files} )' >> ${OFN}
-    echo '        set ( output_file "${CMAKE_CURRENT_BINARY_DIR}/${icppFile}.cpp" )' >> ${OFN}
-    echo '        file ( WRITE "${output_file}" "#include \"${CMAKE_CURRENT_SOURCE_DIR}/${icppFile}\"\n" )' >> ${OFN}
-    echo '    endforeach()' >> ${OFN}
+    echo '  file ( GLOB icpp_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/*.icpp" )' >> ${OFN}
+    echo '  foreach ( icppFile ${icpp_files} )' >> ${OFN}
+    echo '      set ( output_file "${CMAKE_CURRENT_BINARY_DIR}/${icppFile}.cpp" )' >> ${OFN}
+    echo '      file ( WRITE "${output_file}" "#include \"${CMAKE_CURRENT_SOURCE_DIR}/${icppFile}\"\n" )' >> ${OFN}
+    echo '  endforeach()' >> ${OFN}
     echo 'endfunction()' >> ${OFN}
 
     echo >> ${OFN}
     echo '# Function to create cpp source file from binary resource definition' >> ${OFN}
     echo 'function ( create_brc_source input_file output_file symbol_name compression symbol_append )' >> ${OFN}
-    echo '    if ( NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${input_file} )' >> ${OFN}
-    echo '        message ( FATAL_ERROR "Input file does not exist: ${CMAKE_CURRENT_SOURCE_DIR}/${input_file}" )' >> ${OFN}
-    echo '    endif()' >> ${OFN}
+    echo '  if ( NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${input_file} )' >> ${OFN}
+    echo '      message ( FATAL_ERROR "Input file does not exist: ${CMAKE_CURRENT_SOURCE_DIR}/${input_file}" )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
     echo >> ${OFN}
-    echo '    file ( REMOVE ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
+    echo '  file ( REMOVE ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
     echo >> ${OFN}
-    echo '    if ( ${compression} MATCHES "[bB][zZ]2" )' >> ${OFN}
-    echo '        set ( COMPRESS_SUFFIX "bz2" )' >> ${OFN}
-    echo '        set ( COMMAND_COMPRESS bzip2 -k -f ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
-    echo '    elseif ( ${compression} MATCHES "[zZ][iI][pP]" )' >> ${OFN}
-    echo '        set ( COMPRESS_SUFFIX "zip" )' >> ${OFN}
-    echo '        set ( COMMAND_COMPRESS zip ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.${COMPRESS_SUFFIX} ${symbol_name} )' >> ${OFN}
-    echo '    endif()' >> ${OFN}
+    echo '  if ( ${compression} MATCHES "[bB][zZ]2" )' >> ${OFN}
+    echo '      find_program ( BZIP2_EXEC bzip2 )'>> ${OFN}
+    echo '      if ( NOT BZIP2_EXEC )' >> ${OFN}
+    echo '          message ( FATAL_ERROR "BZIP2 executable not found!" )' >> ${OFN}
+    echo '      endif()' >> ${OFN}
+    echo '      set ( COMPRESS_SUFFIX "bz2" )' >> ${OFN}
+    echo '      set ( COMMAND_COMPRESS ${BZIP2_EXEC} -k -f ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
+    echo '  elseif ( ${compression} MATCHES "[zZ][iI][pP]" )' >> ${OFN}
+    echo '      find_program ( ZIP_EXEC zip )'>> ${OFN}
+    echo '      if ( NOT ZIP_EXEC )' >> ${OFN}
+    echo '          message ( FATAL_ERROR "ZIP executable not found!" )' >> ${OFN}
+    echo '      endif()' >> ${OFN}
+    echo '      set ( COMPRESS_SUFFIX "zip" )' >> ${OFN}
+    echo '      set ( COMMAND_COMPRESS ${ZIP_EXEC} ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.${COMPRESS_SUFFIX} ${symbol_name} )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
     echo >> ${OFN}
-    echo '    set ( COMMAND_COPY cp ${CMAKE_CURRENT_SOURCE_DIR}/${input_file} ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
-    echo '    set ( COMMAND_MOVE mv ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.${COMPRESS_SUFFIX} ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
+    echo '  file ( COPY ${CMAKE_CURRENT_SOURCE_DIR}/${input_file} DESTINATION ${CMAKE_CURRENT_BINARY_DIR} )' >> ${OFN}
+    echo '  get_filename_component ( input_file_name ${CMAKE_CURRENT_SOURCE_DIR}/${input_file} NAME )' >> ${OFN}
+    echo '  file ( RENAME ${CMAKE_CURRENT_BINARY_DIR}/${input_file_name} ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
+    echo '  if ( COMMAND_COMPRESS )' >> ${OFN}
+    echo '      execute_process ( COMMAND ${COMMAND_COMPRESS} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} OUTPUT_VARIABLE XXXX )' >> ${OFN}
+    echo '      file ( RENAME ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.${COMPRESS_SUFFIX} ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
     echo >> ${OFN}
-    echo '    execute_process ( COMMAND ${COMMAND_COPY} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} )' >> ${OFN}
-    echo '    if ( COMMAND_COMPRESS )' >> ${OFN}
-    echo '        execute_process ( COMMAND ${COMMAND_COMPRESS} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} OUTPUT_VARIABLE XXXX )' >> ${OFN}
-    echo '        execute_process ( COMMAND ${COMMAND_MOVE} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} )' >> ${OFN}
-    echo '    endif()' >> ${OFN}
+    echo '  file ( READ ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} hex_string HEX )' >> ${OFN}
     echo >> ${OFN}
-    echo '    file ( READ ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} hex_string HEX )' >> ${OFN}
+    echo '  set ( CURINDEX 0 )' >> ${OFN}
+    echo '  string ( LENGTH "${hex_string}" CURLENGTH )' >> ${OFN}
+    echo '  math ( EXPR FILELENGTH "${CURLENGTH} / 2" )' >> ${OFN}
+    echo '  set ( ${hex_string} 0)' >> ${OFN}
     echo >> ${OFN}
-    echo '    set ( CURINDEX 0 )' >> ${OFN}
-    echo '    string ( LENGTH "${hex_string}" CURLENGTH )' >> ${OFN}
-    echo '    math ( EXPR FILELENGTH "${CURLENGTH} / 2" )' >> ${OFN}
-    echo '    set ( ${hex_string} 0)' >> ${OFN}
-    echo >> ${OFN}
-    echo '    set ( output_string "static unsigned char ${symbol_name}_[] = {\n" )' >> ${OFN}
-    echo '    while ( CURINDEX LESS CURLENGTH )' >> ${OFN}
+    echo '  set ( output_string "static unsigned char ${symbol_name}_[] = {\n" )' >> ${OFN}
+    echo '  while ( CURINDEX LESS CURLENGTH )' >> ${OFN}
     echo '      string ( SUBSTRING "${hex_string}" ${CURINDEX} 2 CHAR )' >> ${OFN}
     echo '      set ( output_string "${output_string} 0x${CHAR}," )' >> ${OFN}
     echo '      math ( EXPR CURINDEX "${CURINDEX} + 2" )' >> ${OFN}
-    echo '    endwhile()' >> ${OFN}
-    echo '    set ( output_string "${output_string} 0x00 }\;\n\n" )' >> ${OFN}
-    echo '    set ( output_string "${output_string}unsigned char *${symbol_name} = ${symbol_name}_\;\n\n" )' >> ${OFN}
-    echo '    set ( output_string "${output_string}int ${symbol_name}_length = ${FILELENGTH}\;\n\n" )' >> ${OFN}
+    echo '  endwhile()' >> ${OFN}
+    echo '  set ( output_string "${output_string} 0x00 }\;\n\n" )' >> ${OFN}
+    echo '  set ( output_string "${output_string}unsigned char *${symbol_name} = ${symbol_name}_\;\n\n" )' >> ${OFN}
+    echo '  set ( output_string "${output_string}int ${symbol_name}_length = ${FILELENGTH}\;\n\n" )' >> ${OFN}
     echo >> ${OFN}
-    echo '    if ( ${symbol_append} MATCHES "append" )' >> ${OFN}
-    echo '        file ( APPEND ${CMAKE_CURRENT_BINARY_DIR}/${output_file} ${output_string} )' >> ${OFN}
-    echo '    else()' >> ${OFN}
-    echo '        file ( WRITE ${CMAKE_CURRENT_BINARY_DIR}/${output_file} ${output_string} )' >> ${OFN}
-    echo '    endif()' >> ${OFN}
+    echo '  if ( ${symbol_append} MATCHES "append" )' >> ${OFN}
+    echo '      file ( APPEND ${CMAKE_CURRENT_BINARY_DIR}/${output_file} ${output_string} )' >> ${OFN}
+    echo '  else()' >> ${OFN}
+    echo '      file ( WRITE ${CMAKE_CURRENT_BINARY_DIR}/${output_file} ${output_string} )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
     echo 'endfunction()' >> ${OFN}
 
     echo >> ${OFN}
