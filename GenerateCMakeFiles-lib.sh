@@ -933,7 +933,7 @@ generate_main_cmake_file()
 #    echo "message ( STATUS \"FlagDefs: \" \${FlagDefs} )" >> ${OFN}
 
     echo >> ${OFN}
-    echo '# Enable/disable verbose output and set debug/release parameters' >> ${OFN}
+    echo '# Parse definition flags' >> ${OFN}
     echo 'if ( "${FlagDefs}" MATCHES "flagDEBUG" )' >> ${OFN}
     echo '  set ( CMAKE_VERBOSE_MAKEFILE 1 )' >> ${OFN}
     echo '  set ( CMAKE_BUILD_TYPE Debug )' >> ${OFN}
@@ -949,13 +949,29 @@ generate_main_cmake_file()
     echo 'message ( STATUS "Build type: " ${CMAKE_BUILD_TYPE} )' >> ${OFN}
 
     echo >> ${OFN}
+    echo 'if ( "${FlagDefs}" MATCHES "flagDEBUG_MINIMAL" )' >> ${OFN}
+    echo '  if ( NOT MINGW )' >> ${OFN}
+    echo '      set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -ggdb" )' >> ${OFN}
+    echo '  endif ()' >> ${OFN}
+    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -g1" )' >> ${OFN}
+    echo 'endif ()' >> ${OFN}
+
+    echo >> ${OFN}
+    echo 'if ( "${FlagDefs}" MATCHES "flagDEBUG_FULL" )' >> ${OFN}
+    echo '  if ( NOT MINGW )' >> ${OFN}
+    echo '      set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -ggdb" )' >> ${OFN}
+    echo '  endif ()' >> ${OFN}
+    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -g2" )' >> ${OFN}
+    echo 'endif ()' >> ${OFN}
+
+    echo >> ${OFN}
     echo 'if ( "${FlagDefs}" MATCHES "flagSHARED" )' >> ${OFN}
-    echo '  message ( STATUS "Build with shared flag: TRUE" )' >> ${OFN}
+    echo '  set ( STATUS_SHARED "TRUE" )' >> ${OFN}
     echo '  if ( CMAKE_COMPILER_IS_GNUCC )' >> ${OFN}
     echo '      set ( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fPIC -fuse-cxa-atexit" )' >> ${OFN}
     echo '  endif()' >> ${OFN}
     echo 'else()' >> ${OFN}
-    echo '  message ( STATUS "Build with shared flag: FALSE" )' >> ${OFN}
+    echo '  set ( STATUS_SHARED "FALSE" )' >> ${OFN}
     echo '  if ( MINGW )' >> ${OFN}
     echo '      set ( CMAKE_FIND_LIBRARY_SUFFIXES .lib .a ${CMAKE_FIND_LIBRARY_SUFFIXES} )' >> ${OFN}
     echo '      set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc" )' >> ${OFN}
@@ -966,89 +982,93 @@ generate_main_cmake_file()
     echo '  set ( CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
     echo '  set ( CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
     echo 'endif()' >> ${OFN}
+    echo 'message ( STATUS "Build with shared flag: ${STATUS_SHARED}" )' >> ${OFN}
 
     echo >> ${OFN}
     echo 'if ( "${FlagDefs}" MATCHES "flagGCC32" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )' >> ${OFN}
-    echo '  message ( STATUS "Build compilation: 32 bits" )' >> ${OFN}
-    echo '  set ( EXTRA_CFLAGS "${EXTRA_CFLAGS} -m32" )' >> ${OFN}
+    echo '  set ( STATUS_COMPILATION "32 bits" )' >> ${OFN}
+    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -m32" )' >> ${OFN}
     echo '  if ( NOT "${FlagDefs}" MATCHES "(flagGCC32)$" )' >> ${OFN}
     echo '      add_definitions ( -DflagGCC32 )' >> ${OFN}
     echo '      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
     echo '  endif()' >> ${OFN}
     echo 'else()' >> ${OFN}
-    echo '  message ( STATUS "Build compilation: 64 bits" )' >> ${OFN}
+    echo '  set ( STATUS_COMPILATION "64 bits" )' >> ${OFN}
     echo 'endif()' >> ${OFN}
+    echo 'message ( STATUS "Build compilation: ${STATUS_COMPILATION}" )' >> ${OFN}
+
+    echo >> ${OFN}
+    echo 'if ( "${FlagDefs}" MATCHES "flagMT" )' >> ${OFN}
+    echo '  find_package ( Threads REQUIRED )' >> ${OFN}
+    echo '  if ( THREADS_FOUND )' >> ${OFN}
+    echo '      include_directories ( ${THREADS_INCLUDE_DIRS} )' >> ${OFN}
+    echo "      list ( APPEND main_${LINK_LIST} \${THREADS_LIBRARIES} )" >> ${OFN}
+    echo '  endif ()' >> ${OFN}
+    echo 'endif ()' >> ${OFN}
+
+    echo >> ${OFN}
+    echo 'if ( "${FlagDefs}" MATCHES "flagSSL" )' >> ${OFN}
+    echo '  find_package ( OpenSSL REQUIRED )' >> ${OFN}
+    echo '  if ( OPENSSL_FOUND )' >> ${OFN}
+    echo '      include_directories ( ${OPENSSL_INCLUDE_DIRS} )' >> ${OFN}
+    echo "      list ( APPEND main_${LINK_LIST} \${OPENSSL_LIBRARIES} )" >> ${OFN}
+    echo '  endif ()' >> ${OFN}
+    echo 'endif ()' >> ${OFN}
 
     echo >> ${OFN}
     echo '# Set CLANG compiler flags' >> ${OFN}
     echo 'if ( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )' >> ${OFN}
     echo '  set ( CMAKE_COMPILER_IS_CLANG TRUE )' >> ${OFN}
-    echo '  set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-logical-op-parentheses" )' >> ${OFN}
+    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -Wno-logical-op-parentheses" )' >> ${OFN}
     echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
+    echo '# Set compiler options' >> ${OFN}
     echo 'if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )' >> ${OFN}
     echo '  set ( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -std=c++11 -O3 -ffunction-sections -fdata-sections" )' >> ${OFN}
     echo '  set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -std=c++11 -O0" )' >> ${OFN}
-    echo '  if ( "${FlagDefs}" MATCHES "flagDEBUG_MINIMAL" )' >> ${OFN}
-    echo '      if ( NOT MINGW )' >> ${OFN}
-    echo '          set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ggdb" )' >> ${OFN}
-    echo '          set ( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -ggdb" )' >> ${OFN}
-    echo '      endif ()' >> ${OFN}
-    echo '      set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g1" )' >> ${OFN}
-    echo '      set ( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g1" )' >> ${OFN}
-    echo '  endif ()' >> ${OFN}
-    echo '  if ( "${FlagDefs}" MATCHES "flagDEBUG_FULL" )' >> ${OFN}
-    echo '      if ( NOT MINGW )' >> ${OFN}
-    echo '          set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ggdb" )' >> ${OFN}
-    echo '          set ( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -ggdb" )' >> ${OFN}
-    echo '      endif ()' >> ${OFN}
-    echo '      set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g2" )' >> ${OFN}
-    echo '      set ( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g2" )' >> ${OFN}
-    echo '  endif ()' >> ${OFN}
+    echo >> ${OFN}
+    echo '  if ( MINGW )' >> ${OFN}
+    echo '      add_definitions ( -DflagWIN32 )' >> ${OFN}
+    echo '      remove_definitions( -DflagLINUX )' >> ${OFN}
+    echo '      remove_definitions( -DflagPOSIX )' >> ${OFN}
+    echo >> ${OFN}
+    echo '      set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -mwindows" )' >> ${OFN}
+    echo >> ${OFN}
+    echo '      if ( "${FlagDefs}" MATCHES "flagDLL" )' >> ${OFN}
+    echo '          set ( BUILD_SHARED_LIBS ON )' >> ${OFN}
+    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -shared" )' >> ${OFN}
+    echo '      endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '      if ("${FlagDefs}" MATCHES "flagGUI" )' >> ${OFN}
+    echo "          list ( APPEND main_${LINK_LIST} mingw32 )" >> ${OFN}
+    echo '      else()' >> ${OFN}
+    echo '          set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -mconsole" )' >> ${OFN}
+    echo '      endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '      if ( "${FlagDefs}" MATCHES "flagMT" )' >> ${OFN}
+    echo '          set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -mthreads" )' >> ${OFN}
+    echo '      endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '      # The optimalization might be broken on MinGW - remove optimalization flag (cross compile).' >> ${OFN}
+    echo '      string ( REGEX REPLACE "-O3" "" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} )' >> ${OFN}
+#    echo >> ${OFN}
+#    echo '     # To compile windows resource file' >> ${OFN}
+#    echo '     enable_language ( RC )' >> ${OFN}
+#    echo '     set ( CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> <DEFINES> -O coff -o <OBJECT> <SOURCE>" )' >> ${OFN}
+    echo >> ${OFN}
+    echo '      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '  set ( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${EXTRA_GCC_FLAGS}" )' >> ${OFN}
+    echo '  set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${EXTRA_GCC_FLAGS}" )' >> ${OFN}
+    echo '  set ( CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${EXTRA_GCC_FLAGS}" )' >> ${OFN}
+    echo '  set ( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${EXTRA_GCC_FLAGS}" )' >> ${OFN}
+    echo >> ${OFN}
     echo 'elseif ( MSVC )' >> ${OFN}
     echo '  set ( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -GS-" )' >> ${OFN}
     echo '  set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Zi" )' >> ${OFN}
     echo 'endif()' >> ${OFN}
-
-    echo >> ${OFN}
-    echo 'if ( MINGW )' >> ${OFN}
-    echo '  add_definitions ( -DflagWIN32 )' >> ${OFN}
-    echo '  remove_definitions( -DflagLINUX )' >> ${OFN}
-    echo '  remove_definitions( -DflagPOSIX )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  set ( EXTRA_CFLAGS "${EXTRA_CFLAGS} -mwindows" )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ( "${FlagDefs}" MATCHES "flagDLL" )' >> ${OFN}
-    echo '      set ( BUILD_SHARED_LIBS ON )' >> ${OFN}
-    echo '      set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -shared" )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ("${FlagDefs}" MATCHES "flagGUI" )' >> ${OFN}
-    echo "      list ( APPEND main_${LINK_LIST} mingw32 )" >> ${OFN}
-    echo '  else()' >> ${OFN}
-    echo '      set ( EXTRA_CFLAGS "${EXTRA_CFLAGS} -mconsole" )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ( "${FlagDefs}" MATCHES "flagMT" )' >> ${OFN}
-    echo '      set ( EXTRA_CFLAGS "${EXTRA_CFLAGS} -mthreads" )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  # The optimalization might be broken on MinGW - remove optimalization flag (cross compile).' >> ${OFN}
-    echo '  string ( REGEX REPLACE "-O3" "" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} )' >> ${OFN}
-#    echo >> ${OFN}
-#    echo '  # To compile windows resource file' >> ${OFN}
-#    echo '  enable_language ( RC )' >> ${OFN}
-#    echo '  set ( CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> <DEFINES> -O coff -o <OBJECT> <SOURCE>" )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
-    echo 'endif()' >> ${OFN}
-
-    echo >> ${OFN}
-    echo 'set ( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${EXTRA_CFLAGS}" )' >> ${OFN}
-    echo 'set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${EXTRA_CFLAGS}" )' >> ${OFN}
-    echo 'set ( CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${EXTRA_CFLAGS}" )' >> ${OFN}
-    echo 'set ( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${EXTRA_CFLAGS}" )' >> ${OFN}
 
     echo >> ${OFN}
     echo '# Function to create cpp source from icpp files' >> ${OFN}
@@ -1063,7 +1083,6 @@ generate_main_cmake_file()
     echo >> ${OFN}
     echo '# Function to create cpp source file from binary resource definition' >> ${OFN}
     echo 'function ( create_brc_source input_file output_file symbol_name compression symbol_append )' >> ${OFN}
-    echo >> ${OFN}
     echo '    if ( NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${input_file} )' >> ${OFN}
     echo '        message ( FATAL_ERROR "Input file does not exist: ${CMAKE_CURRENT_SOURCE_DIR}/${input_file}" )' >> ${OFN}
     echo '    endif()' >> ${OFN}
@@ -1109,7 +1128,6 @@ generate_main_cmake_file()
     echo '    else()' >> ${OFN}
     echo '        file ( WRITE ${CMAKE_CURRENT_BINARY_DIR}/${output_file} ${output_string} )' >> ${OFN}
     echo '    endif()' >> ${OFN}
-    echo >> ${OFN}
     echo 'endfunction()' >> ${OFN}
 
     echo >> ${OFN}
@@ -1151,24 +1169,6 @@ generate_main_cmake_file()
     echo '      link_directories( /usr/local/lib )' >> ${OFN}
     echo '  endif()' >> ${OFN}
     echo 'endif()' >> ${OFN}
-
-    echo >> ${OFN}
-    echo 'if ( "${FlagDefs}" MATCHES "flagMT" )' >> ${OFN}
-    echo '  find_package ( Threads REQUIRED )' >> ${OFN}
-    echo '  if ( THREADS_FOUND )' >> ${OFN}
-    echo '      include_directories ( ${THREADS_INCLUDE_DIRS} )' >> ${OFN}
-    echo "      list ( APPEND main_${LINK_LIST} \${THREADS_LIBRARIES} )" >> ${OFN}
-    echo '  endif ()' >> ${OFN}
-    echo 'endif ()' >> ${OFN}
-
-    echo >> ${OFN}
-    echo 'if ( "${FlagDefs}" MATCHES "flagSSL" )' >> ${OFN}
-    echo '  find_package ( OpenSSL REQUIRED )' >> ${OFN}
-    echo '  if ( OPENSSL_FOUND )' >> ${OFN}
-    echo '      include_directories ( ${OPENSSL_INCLUDE_DIRS} )' >> ${OFN}
-    echo "      list ( APPEND main_${LINK_LIST} \${OPENSSL_LIBRARIES} )" >> ${OFN}
-    echo '  endif ()' >> ${OFN}
-    echo 'endif ()' >> ${OFN}
 
     echo >> ${OFN}
     echo '# Initialize definition flags' >> ${OFN}
