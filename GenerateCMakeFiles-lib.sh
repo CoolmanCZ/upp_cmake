@@ -81,6 +81,63 @@ test_required_binaries()
     fi
 }
 
+string_trim_spaces_both()
+{
+    local line="${1}"
+
+    line="$(echo -e "${line}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+
+    echo "${line}"
+}
+
+string_remove_comma()
+{
+    local line="${1}"
+
+    line="${line//,}"   # Remove ','
+    line="${line//;}"   # Remove ';'
+    line="${line//\"}"  # Remove '"'
+
+    echo "${line}"
+}
+
+string_replace_dash()
+{
+    local line="${1}"
+
+    line=`echo "${line}" | sed 's#/#_#g'`
+
+    echo "${line}"
+}
+
+string_get_in_parenthesis()
+{
+    local line="${1}"
+
+    line=`echo "${line}" | sed '1s/[^(]*(//;$s/)[^)]*$//'`  # Get string inside parenthesis
+    line=`echo "${line}" | sed 's/& //g'`                   # Remove all '&'
+
+    echo "${line}"
+}
+
+string_get_after_parenthesis()
+{
+    local line="${1}"
+
+    line=`echo "${line}" | sed 's/^.*) //'`                 # Get string after the right parenthesis
+
+    echo "${line}"
+}
+
+string_get_before_parenthesis()
+{
+    local line="${1}"
+
+    line=`echo "${line}" | sed 's/(.*$//'`                  # Get string before the left parenthesis
+
+    echo "${line}"
+}
+
 if_options_replace()
 {
     local options="${1}"
@@ -232,63 +289,6 @@ if_options_parse_all()
     echo "${output}" | sed 's#)(#) AND (#g'                   # Put 'AND' between options
 }
 
-string_trim_spaces_both()
-{
-    local line="${1}"
-
-    line="$(echo -e "${line}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-
-    echo "${line}"
-}
-
-string_remove_comma()
-{
-    local line="${1}"
-
-    line="${line//,}"   # Remove ','
-    line="${line//;}"   # Remove ';'
-    line="${line//\"}"  # Remove '"'
-
-    echo "${line}"
-}
-
-string_replace_dash()
-{
-    local line="${1}"
-
-    line=`echo "${line}" | sed 's#/#_#g'`
-
-    echo "${line}"
-}
-
-string_get_in_parenthesis()
-{
-    local line="${1}"
-
-    line=`echo "${line}" | sed '1s/[^(]*(//;$s/)[^)]*$//'`  # Get string inside parenthesis
-    line=`echo "${line}" | sed 's/& //g'`                   # Remove all '&'
-
-    echo "${line}"
-}
-
-string_get_after_parenthesis()
-{
-    local line="${1}"
-
-    line=`echo "${line}" | sed 's/^.*) //'`                 # Get string after the right parenthesis
-
-    echo "${line}"
-}
-
-string_get_before_parenthesis()
-{
-    local line="${1}"
-
-    line=`echo "${line}" | sed 's/(.*$//'`                 # Get string before the left parenthesis
-
-    echo "${line}"
-}
-
 list_parse()
 {
     local line="${1}"
@@ -348,6 +348,33 @@ link_parse()
     fi
 }
 
+if_options_builder()
+{
+    local line="${1}"
+    local options=$(string_get_after_parenthesis "${line}")
+    local parameters_gcc=""
+    local parameters_msvc=""
+
+    if [[ ${options} =~ NOWARNINGS ]]; then
+        parameters_gcc="-w"
+        parameters_msvc="-W0"
+    fi
+
+    if [ -n "${parameters_gcc}" ]; then
+        echo 'if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )' >> ${OFN}
+        echo "  set ( CMAKE_CXX_FLAGS_RELEASE \"\${CMAKE_CXX_FLAGS_RELEASE} ${parameters_gcc}\")" >> ${OFN}
+        echo "  set ( CMAKE_CXX_FLAGS_DEBUG \"\${CMAKE_CXX_FLAGS_DEBUG} ${parameters_gcc}\")" >> ${OFN}
+        echo "  set ( CMAKE_C_FLAGS_RELEASE \"\${CMAKE_C_FLAGS_RELEASE} ${parameters_gcc}\")" >> ${OFN}
+        echo "  set ( CMAKE_C_FLAGS_DEBUG \"\${CMAKE_C_FLAGS_DEBUG} ${parameters_gcc}\")" >> ${OFN}
+        echo 'elseif ( MSVC )' >> ${OFN}
+        echo "  set ( CMAKE_CXX_FLAGS_RELEASE \"\${CMAKE_CXX_FLAGS_RELEASE} ${parameters_msvc}\")" >> ${OFN}
+        echo "  set ( CMAKE_CXX_FLAGS_DEBUG \"\${CMAKE_CXX_FLAGS_DEBUG} ${parameters_msvc}\")" >> ${OFN}
+        echo "  set ( CMAKE_C_FLAGS_RELEASE \"\${CMAKE_C_FLAGS_RELEASE} ${parameters_msvc}\")" >> ${OFN}
+        echo "  set ( CMAKE_C_FLAGS_DEBUG \"\${CMAKE_C_FLAGS_DEBUG} ${parameters_msvc}\")" >> ${OFN}
+        echo 'endif()' >> ${OFN}
+    fi
+}
+
 options_parse()
 {
     local line="${1}"
@@ -357,16 +384,20 @@ options_parse()
     echo >> ${OFN}
     echo "#${1}" >> ${OFN}
 
-    options=$(string_get_in_parenthesis "${line}")
-    options=$(if_options_parse_all "${options}")              # Parse options
+    if [[ ${line} =~ BUILDER_OPTION ]]; then
+        $(if_options_builder "${line}")
+    else
+        options=$(string_get_in_parenthesis "${line}")
+        options=$(if_options_parse_all "${options}")              # Parse options
 
-    parameters=$(string_get_after_parenthesis "${line}")
-    parameters=$(string_remove_comma "${parameters}")
+        parameters=$(string_get_after_parenthesis "${line}")
+        parameters=$(string_remove_comma "${parameters}")
 
-    if [ -n "${options}" ]; then
-        echo "if ($options)" >> ${OFN}
-        echo "      add_definitions ( ${parameters} )" >> ${OFN}
-        echo "endif()" >> ${OFN}
+        if [ -n "${options}" ]; then
+            echo "if ($options)" >> ${OFN}
+            echo "      add_definitions ( ${parameters} )" >> ${OFN}
+            echo "endif()" >> ${OFN}
+        fi
     fi
 }
 
@@ -912,9 +943,9 @@ generate_main_cmake_file()
     echo >> ${OFN}
     echo '# Parse definition flags' >> ${OFN}
     echo 'if ( "${FlagDefs}" MATCHES "flagDEBUG" )' >> ${OFN}
-    echo '  set ( CMAKE_VERBOSE_MAKEFILE 1 )' >> ${OFN}
     echo '  set ( CMAKE_BUILD_TYPE Debug )' >> ${OFN}
     echo '  add_definitions ( -D_DEBUG )' >> ${OFN}
+    echo '  set ( CMAKE_VERBOSE_MAKEFILE 1 )' >> ${OFN}
     echo '  if ( NOT "${FlagDefs}" MATCHES "(flagDEBUG)$" )' >> ${OFN}
     echo '      add_definitions ( -DflagDEBUG )' >> ${OFN}
     echo '      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
@@ -949,9 +980,14 @@ generate_main_cmake_file()
     echo '  endif()' >> ${OFN}
     echo 'else()' >> ${OFN}
     echo '  set ( STATUS_SHARED "FALSE" )' >> ${OFN}
+    echo '  set ( BUILD_SHARED_LIBS OFF )' >> ${OFN}
+    echo '  set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static" )' >> ${OFN}
+    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -static -fexceptions" )' >> ${OFN}
     echo '  if ( MINGW )' >> ${OFN}
     echo '      set ( CMAKE_FIND_LIBRARY_SUFFIXES .lib .a ${CMAKE_FIND_LIBRARY_SUFFIXES} )' >> ${OFN}
-    echo '      set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc" )' >> ${OFN}
+    echo '      if ( NOT "${FlagDefs}" MATCHES "flagDLL" )' >> ${OFN}
+    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ --disable-shared --enable-static" )' >> ${OFN}
+    echo '      endif()' >> ${OFN}
     echo '  endif()' >> ${OFN}
     echo >> ${OFN}
     echo '  set ( CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
@@ -959,7 +995,7 @@ generate_main_cmake_file()
     echo '  set ( CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
     echo '  set ( CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
     echo 'endif()' >> ${OFN}
-    echo 'message ( STATUS "Build with shared flag: ${STATUS_SHARED}" )' >> ${OFN}
+    echo 'message ( STATUS "Build with flagSHARED: ${STATUS_SHARED}" )' >> ${OFN}
 
     echo >> ${OFN}
     echo 'if ( "${FlagDefs}" MATCHES "flagGCC32" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )' >> ${OFN}
@@ -996,7 +1032,7 @@ generate_main_cmake_file()
     echo '# Set CLANG compiler flags' >> ${OFN}
     echo 'if ( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )' >> ${OFN}
     echo '  set ( CMAKE_COMPILER_IS_CLANG TRUE )' >> ${OFN}
-    echo '  set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-logical-op-parentheses" )' >> ${OFN}
+    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -Wno-logical-op-parentheses" )' >> ${OFN}
     echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
@@ -1015,6 +1051,7 @@ generate_main_cmake_file()
     echo '      if ( "${FlagDefs}" MATCHES "flagDLL" )' >> ${OFN}
     echo '          set ( BUILD_SHARED_LIBS ON )' >> ${OFN}
     echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -shared" )' >> ${OFN}
+    echo '          string ( REGEX REPLACE "-static " "" CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} )' >> ${OFN}
     echo '      endif()' >> ${OFN}
     echo >> ${OFN}
     echo '      if ("${FlagDefs}" MATCHES "flagGUI" )' >> ${OFN}
@@ -1041,6 +1078,16 @@ generate_main_cmake_file()
     echo 'elseif ( MSVC )' >> ${OFN}
     echo '  set ( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -GS-" )' >> ${OFN}
     echo '  set ( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Zi" )' >> ${OFN}
+    echo '  set ( CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -GS-" )' >> ${OFN}
+    echo '  set ( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Zi" )' >> ${OFN}
+    echo 'endif()' >> ${OFN}
+
+    echo >> ${OFN}
+    echo '# Check for header files' >> ${OFN}
+    echo 'include(CheckIncludeFile)' >> ${OFN}
+    echo 'check_include_file ( strings.h HAVE_STRINGS_H )' >> ${OFN}
+    echo 'if ( HAVE_STRINGS_H )' >> ${OFN}
+    echo '  set ( HAVE_STRINGS_H 1 )' >> ${OFN}
     echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
@@ -1205,7 +1252,7 @@ generate_main_cmake_file()
 
     echo >> ${OFN}
     echo "# Main program properties" >> ${OFN}
-    local build_date="`date '+#define bmYEAR    %y%n''#define bmMONTH   %-m%n''#define bmDAY     %-d%n''#define bmHOUR    %-H%n''#define bmMINUTE  %-M%n''#define bmSECOND  %-S%n''#define bmTIME    Time(%y, %-m, %-d, %-H, %-M, %-S)'`"
+    local build_date="`date '+#define bmYEAR    %Y%n''#define bmMONTH   %-m%n''#define bmDAY     %-d%n''#define bmHOUR    %-H%n''#define bmMINUTE  %-M%n''#define bmSECOND  %-S%n''#define bmTIME    Time(%Y, %-m, %-d, %-H, %-M, %-S)'`"
     local build_user="#define bmMACHINE \\\"`hostname`\\\""
     local build_machine="#define bmUSER    \\\"`whoami`\\\""
 
