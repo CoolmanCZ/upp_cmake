@@ -937,14 +937,29 @@ generate_main_cmake_file()
 #    echo "message ( STATUS \"FlagDefs: \" \${FlagDefs} )" >> ${OFN}
 
     echo >> ${OFN}
+    echo '# Set CLANG compiler flags' >> ${OFN}
+    echo 'if ( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )' >> ${OFN}
+    echo '  set ( CMAKE_COMPILER_IS_CLANG TRUE )' >> ${OFN}
+    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -Wno-logical-op-parentheses" )' >> ${OFN}
+    echo 'endif()' >> ${OFN}
+
+    echo >> ${OFN}
+    echo 'if ( "${FlagDefs}" MATCHES "flagGCC32" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )' >> ${OFN}
+    echo '  set ( STATUS_COMPILATION "32" )' >> ${OFN}
+    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -m32" )' >> ${OFN}
+    echo 'else()' >> ${OFN}
+    echo '  set ( STATUS_COMPILATION "64" )' >> ${OFN}
+    echo 'endif()' >> ${OFN}
+    echo 'message ( STATUS "Build compilation: ${STATUS_COMPILATION} bits" )' >> ${OFN}
+
+    echo >> ${OFN}
     echo '# Parse definition flags' >> ${OFN}
     echo 'if ( "${FlagDefs}" MATCHES "flagDEBUG" )' >> ${OFN}
+    echo '  set ( CMAKE_VERBOSE_MAKEFILE 1 )' >> ${OFN}
     echo '  set ( CMAKE_BUILD_TYPE DEBUG )' >> ${OFN}
     echo '  add_definitions ( -D_DEBUG )' >> ${OFN}
     echo >> ${OFN}
     echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -O0" )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  set ( CMAKE_VERBOSE_MAKEFILE 1 )' >> ${OFN}
     echo >> ${OFN}
     echo '  if ( NOT "${FlagDefs}" MATCHES "(flagDEBUG)[;$]" )' >> ${OFN}
     echo '      add_definitions ( -DflagDEBUG )' >> ${OFN}
@@ -958,13 +973,18 @@ generate_main_cmake_file()
     echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -incremental:yes -debug -OPT:NOREF" )' >> ${OFN}
     echo '      endif()' >> ${OFN}
     echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
     echo 'else()' >> ${OFN}
+    echo '  set ( CMAKE_VERBOSE_MAKEFILE 0 )' >> ${OFN}
     echo '  set ( CMAKE_BUILD_TYPE RELEASE )' >> ${OFN}
     echo '  add_definitions ( -D_RELEASE )' >> ${OFN}
     echo >> ${OFN}
     echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -O3" )' >> ${OFN}
     echo '  set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -GS-" )' >> ${OFN}
+    echo >> ${OFN}
+    echo '  if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )' >> ${OFN}
+    echo '      set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -ffunction-sections -fdata-sections" )' >> ${OFN}
+    echo '      set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-s,--gc-sections" )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
     echo >> ${OFN}
     echo '  if ( MSVC )' >> ${OFN}
     echo '      if ( MATCHES "flagMSC(8|9|10|11|12|15)" OR "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )' >> ${OFN}
@@ -973,7 +993,6 @@ generate_main_cmake_file()
     echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -incremental:no -release -OPT:REF,ICF" )' >> ${OFN}
     echo '      endif()' >> ${OFN}
     echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
     echo 'endif()' >> ${OFN}
     echo 'message ( STATUS "Build type: " ${CMAKE_BUILD_TYPE} )' >> ${OFN}
 
@@ -996,16 +1015,9 @@ generate_main_cmake_file()
     echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
-    echo '# Set CLANG compiler flags' >> ${OFN}
-    echo 'if ( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )' >> ${OFN}
-    echo '  set ( CMAKE_COMPILER_IS_CLANG TRUE )' >> ${OFN}
-    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -Wno-logical-op-parentheses" )' >> ${OFN}
-    echo 'endif()' >> ${OFN}
-
-    echo >> ${OFN}
     echo 'if ( "${FlagDefs}" MATCHES "flagSHARED" )' >> ${OFN}
     echo '  set ( STATUS_SHARED "TRUE" )' >> ${OFN}
-    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -shared -fPIC -fuse-cxa-atexit" )' >> ${OFN}
+    echo '  set ( EXTRA_GXX_FLAGS "${EXTRA_GXX_FLAGS} -fuse-cxa-atexit" )' >> ${OFN}
     echo 'else()' >> ${OFN}
     echo '  set ( STATUS_SHARED "FALSE" )' >> ${OFN}
     echo '  set ( BUILD_SHARED_LIBS OFF )' >> ${OFN}
@@ -1013,23 +1025,9 @@ generate_main_cmake_file()
     echo >> ${OFN}
     echo '  if ( MINGW )' >> ${OFN}
     echo '      set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc" )' >> ${OFN}
-    echo >> ${OFN}
-    echo '      set ( CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
-    echo '      set ( CMAKE_CXX_ARCHIVE_APPEND "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
-    echo '      set ( CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
-    echo '      set ( CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
     echo '  endif()' >> ${OFN}
     echo 'endif()' >> ${OFN}
     echo 'message ( STATUS "Build with flagSHARED: ${STATUS_SHARED}" )' >> ${OFN}
-
-    echo >> ${OFN}
-    echo 'if ( "${FlagDefs}" MATCHES "flagGCC32" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )' >> ${OFN}
-    echo '  set ( STATUS_COMPILATION "32" )' >> ${OFN}
-    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -m32" )' >> ${OFN}
-    echo 'else()' >> ${OFN}
-    echo '  set ( STATUS_COMPILATION "64" )' >> ${OFN}
-    echo 'endif()' >> ${OFN}
-    echo 'message ( STATUS "Build compilation: ${STATUS_COMPILATION} bits" )' >> ${OFN}
 
     echo >> ${OFN}
     echo 'if ( "${FlagDefs}" MATCHES "flagMT" )' >> ${OFN}
@@ -1052,7 +1050,7 @@ generate_main_cmake_file()
     echo >> ${OFN}
     echo '# Set compiler options' >> ${OFN}
     echo 'if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )' >> ${OFN}
-    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -std=c++11 -ffunction-sections -fdata-sections" )' >> ${OFN}
+    echo '  set ( EXTRA_GXX_FLAGS "${EXTRA_GXX_FLAGS} -std=c++11" )' >> ${OFN}
     echo >> ${OFN}
     echo '  if ( MINGW )' >> ${OFN}
     echo '      add_definitions ( -DflagWIN32 )' >> ${OFN}
@@ -1086,8 +1084,13 @@ generate_main_cmake_file()
     echo '      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
     echo '  endif()' >> ${OFN}
     echo >> ${OFN}
-    echo '  set ( CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_CXX_FLAGS_${BUILD_TYPE}} ${EXTRA_GCC_FLAGS}" )' >> ${OFN}
+    echo '  set ( CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_CXX_FLAGS_${BUILD_TYPE}} ${EXTRA_GXX_FLAGS} ${EXTRA_GCC_FLAGS}" )' >> ${OFN}
     echo '  set ( CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_C_FLAGS_${BUILD_TYPE}} ${EXTRA_GCC_FLAGS}" )' >> ${OFN}
+    echo >> ${OFN}
+    echo '  set ( CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
+    echo '  set ( CMAKE_CXX_ARCHIVE_APPEND "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
+    echo '  set ( CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
+    echo '  set ( CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
     echo >> ${OFN}
     echo 'elseif ( MSVC )' >> ${OFN}
     echo '  set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -nologo" )' >> ${OFN}
