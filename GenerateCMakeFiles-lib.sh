@@ -1146,24 +1146,6 @@ generate_main_cmake_file()
     echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
-    echo '# Check for header files and functions' >> ${OFN}
-    echo 'include(CheckIncludeFile)' >> ${OFN}
-    echo 'include(CheckFunctionExists)' >> ${OFN}
-    echo >> ${OFN}
-    echo 'check_include_file ( strings.h HAVE_STRINGS_H )' >> ${OFN}
-    echo 'if ( HAVE_STRINGS_H )' >> ${OFN}
-    echo '  set ( HAVE_STRINGS_H 1 )' >> ${OFN}
-    echo 'endif()' >> ${OFN}
-    echo 'check_function_exists ( strcasecmp HAVE_STRCASECMP )' >> ${OFN}
-    echo 'if ( HAVE_STRCASECMP )' >> ${OFN}
-    echo '  set ( HAVE_STRCASECMP 1 )' >> ${OFN}
-    echo 'endif()' >> ${OFN}
-    echo 'check_function_exists ( strncasecmp HAVE_STRNCASECMP )' >> ${OFN}
-    echo 'if ( HAVE_STRNCASECMP )' >> ${OFN}
-    echo '  set ( HAVE_STRNCASECMP 1 )' >> ${OFN}
-    echo 'endif()' >> ${OFN}
-
-    echo >> ${OFN}
     echo '# Function to create cpp source from icpp files' >> ${OFN}
     echo 'function ( create_cpps_from_icpps )' >> ${OFN}
     echo '  file ( GLOB icpp_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/*.icpp" )' >> ${OFN}
