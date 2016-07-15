@@ -1,6 +1,6 @@
-# Ultimate++ CMakeList generator
+# Ultimate++ CMakeLists generator
 
-GenerateCMakeFiles-lib.sh is the bash script for generating CMakeList.txt files of the Ultimate++ projects.
+GenerateCMakeFiles-lib.sh is the bash script for generating CMakeLists.txt files of the Ultimate++ projects.
 This script was created based on discussion on the Ultimate++ forum - [CMake support](http://www.ultimatepp.org/forums/index.php?t=msg&th=6013&goto=32310&#msg_32310)
 
 ## Using
@@ -19,14 +19,15 @@ generate_main_cmake_file <full path to the ultimate++ project file> [build flags
 - Release or debug build
 - Binary resource support (BINARY, BINARY_MASK, BINARY_ARRAY)
 - Cross compile support (require MINGW GCC 4.9+)
+- MSYS2 MINGW support
+- Generated CMakeLists.txt files can be used to create an MS Visual C++ project
 
 ## Limitation
-- Initial version was tested only on LINUX platform
 - Ultimate++ source tree and directory of the project should be in the same directory as the generator scripts (you can use symlinks)
-- Not all options of the files are taken into consideration during CMakeList generating
-- CMakeList.txt files are generated only for dependent modules of the processed Ultimate++ project
+- Some options are not taken into account when generating CMakeLists
+- CMakeLists.txt files are generated only for dependent modules of the processed Ultimate++ project
 
 ## TODO
-- Using of the script with MSYS2 MINGW under Windows OS
+- Support of building shared libraries
 - Create symlinks (copy directory tree) automatically
 - Generate distribution package
