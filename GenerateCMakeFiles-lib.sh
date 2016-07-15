@@ -1324,16 +1324,28 @@ generate_main_cmake_file()
     done
 
     echo >> ${OFN}
-    echo "# Main program properties" >> ${OFN}
-    local build_date="`date '+#define bmYEAR    %Y%n''#define bmMONTH   %-m%n''#define bmDAY     %-d%n''#define bmHOUR    %-H%n''#define bmMINUTE  %-M%n''#define bmSECOND  %-S%n''#define bmTIME    Time(%Y, %-m, %-d, %-H, %-M, %-S)'`"
-    local build_user="#define bmMACHINE \\\"`hostname`\\\""
-    local build_machine="#define bmUSER    \\\"`whoami`\\\""
-
-    echo "file ( WRITE \${PROJECT_BINARY_DIR}/inc/build_info.h \"" >> ${OFN}
-    echo "${build_date}" >> ${OFN}
-    echo "${build_user}" >> ${OFN}
-    echo "${build_machine}\"" >> ${OFN}
-    echo ")" >> ${OFN}
+    echo '# Creation of the file build_info.h' >> ${OFN}
+    echo 'set ( BUILD_INFO_H ${PROJECT_BINARY_DIR}/inc/build_info.h )' >> ${OFN}
+    echo 'string ( TIMESTAMP bmYEAR %Y )'>> ${OFN}
+    echo 'string ( TIMESTAMP bmMONTH %m )'>> ${OFN}
+    echo 'string ( TIMESTAMP bmDAY %d )'>> ${OFN}
+    echo 'string ( TIMESTAMP bmHOUR %H )'>> ${OFN}
+    echo 'string ( TIMESTAMP bmMINUTE %M )'>> ${OFN}
+    echo 'string ( TIMESTAMP bmSECOND %S )'>> ${OFN}
+    echo 'string ( REGEX REPLACE "^0" "" bmMONTH ${bmMONTH} )' >> ${OFN}
+    echo 'string ( REGEX REPLACE "^0" "" bmDAY ${bmDAY} )' >> ${OFN}
+    echo 'string ( REGEX REPLACE "^0" "" bmHOUR ${bmHOUR} )' >> ${OFN}
+    echo 'string ( REGEX REPLACE "^0" "" bmSECOND ${bmSECOND} )' >> ${OFN}
+    echo 'cmake_host_system_information ( RESULT bmHOSTNAME QUERY HOSTNAME )'>> ${OFN}
+    echo 'file ( WRITE  ${BUILD_INFO_H} "#define bmYEAR ${bmYEAR}\n#define bmMONTH ${bmMONTH}\n#define bmDAY ${bmDAY}\n" )' >> ${OFN}
+    echo 'file ( APPEND ${BUILD_INFO_H} "#define bmHOUR ${bmHOUR}\n#define bmMINUTE ${bmMINUTE}\n#define bmSECOND ${bmSECOND}\n" )' >> ${OFN}
+    echo 'file ( APPEND ${BUILD_INFO_H} "#define bmTIME Time(${bmYEAR}, ${bmMONTH}, ${bmDAY}, ${bmHOUR}, ${bmMINUTE}, ${bmSECOND})\n" )' >> ${OFN}
+    echo 'file ( APPEND ${BUILD_INFO_H} "#define bmMACHINE \"${bmHOSTNAME}\"\n" )' >> ${OFN}
+    echo 'if ( WIN32 )' >> ${OFN}
+    echo '  file ( APPEND ${BUILD_INFO_H} "#define bmUSER \"$ENV{USERNAME}\"\n" )' >> ${OFN}
+    echo 'else()' >> ${OFN}
+    echo '  file ( APPEND ${BUILD_INFO_H} "#define bmUSER \"$ENV{USER}\"\n" )' >> ${OFN}
+    echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
     echo '# Collect icpp files' >> ${OFN}
