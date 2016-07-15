@@ -942,34 +942,58 @@ generate_main_cmake_file()
     echo '  set ( CMAKE_BUILD_TYPE DEBUG )' >> ${OFN}
     echo '  add_definitions ( -D_DEBUG )' >> ${OFN}
     echo >> ${OFN}
+    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -O0" )' >> ${OFN}
+    echo >> ${OFN}
     echo '  set ( CMAKE_VERBOSE_MAKEFILE 1 )' >> ${OFN}
     echo >> ${OFN}
-    echo '  if ( NOT "${FlagDefs}" MATCHES "(flagDEBUG)$" )' >> ${OFN}
+    echo '  if ( NOT "${FlagDefs}" MATCHES "(flagDEBUG)[;$]" )' >> ${OFN}
     echo '      add_definitions ( -DflagDEBUG )' >> ${OFN}
     echo '      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
-    echo '  endif ()' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '  if ( MSVC )' >> ${OFN}
+    echo '      if ( MATCHES "flagMSC(8|9|10|11|12|15)" OR "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )' >> ${OFN}
+    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -debug -OPT:NOREF" )' >> ${OFN}
+    echo '      else()' >> ${OFN}
+    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -incremental:yes -debug -OPT:NOREF" )' >> ${OFN}
+    echo '      endif()' >> ${OFN}
+    echo '  endif()' >> ${OFN}
     echo >> ${OFN}
     echo 'else()' >> ${OFN}
     echo '  set ( CMAKE_BUILD_TYPE RELEASE )' >> ${OFN}
     echo '  add_definitions ( -D_RELEASE )' >> ${OFN}
-    echo 'endif ()' >> ${OFN}
+    echo >> ${OFN}
+    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -O3" )' >> ${OFN}
+    echo '  set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -GS-" )' >> ${OFN}
+    echo >> ${OFN}
+    echo '  if ( MSVC )' >> ${OFN}
+    echo '      if ( MATCHES "flagMSC(8|9|10|11|12|15)" OR "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )' >> ${OFN}
+    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -release -OPT:REF,ICF" )' >> ${OFN}
+    echo '      else()' >> ${OFN}
+    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -incremental:no -release -OPT:REF,ICF" )' >> ${OFN}
+    echo '      endif()' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo 'endif()' >> ${OFN}
     echo 'message ( STATUS "Build type: " ${CMAKE_BUILD_TYPE} )' >> ${OFN}
 
     echo >> ${OFN}
     echo 'if ( "${FlagDefs}" MATCHES "flagDEBUG_MINIMAL" )' >> ${OFN}
     echo '  if ( NOT MINGW )' >> ${OFN}
     echo '      set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -ggdb" )' >> ${OFN}
-    echo '  endif ()' >> ${OFN}
+    echo '  endif()' >> ${OFN}
     echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -g1" )' >> ${OFN}
-    echo 'endif ()' >> ${OFN}
+    echo '  set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -Zd" )' >> ${OFN}
+    echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
     echo 'if ( "${FlagDefs}" MATCHES "flagDEBUG_FULL" )' >> ${OFN}
     echo '  if ( NOT MINGW )' >> ${OFN}
     echo '      set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -ggdb" )' >> ${OFN}
-    echo '  endif ()' >> ${OFN}
+    echo '  endif()' >> ${OFN}
     echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -g2" )' >> ${OFN}
-    echo 'endif ()' >> ${OFN}
+    echo '  set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -Zi" )' >> ${OFN}
+    echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
     echo '# Set CLANG compiler flags' >> ${OFN}
@@ -985,15 +1009,10 @@ generate_main_cmake_file()
     echo 'else()' >> ${OFN}
     echo '  set ( STATUS_SHARED "FALSE" )' >> ${OFN}
     echo '  set ( BUILD_SHARED_LIBS OFF )' >> ${OFN}
-#    echo '  if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )' >> ${OFN}
-#    echo '      set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static" )' >> ${OFN}
-#    echo '  endif()' >> ${OFN}
     echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -static -fexceptions" )' >> ${OFN}
     echo >> ${OFN}
     echo '  if ( MINGW )' >> ${OFN}
-    echo '      if ( NOT "${FlagDefs}" MATCHES "flagDLL" )' >> ${OFN}
-    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc" )' >> ${OFN}
-    echo '      endif()' >> ${OFN}
+    echo '      set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc" )' >> ${OFN}
     echo >> ${OFN}
     echo '      set ( CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
     echo '      set ( CMAKE_CXX_ARCHIVE_APPEND "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
@@ -1018,8 +1037,8 @@ generate_main_cmake_file()
     echo '  if ( THREADS_FOUND )' >> ${OFN}
     echo '      include_directories ( ${THREADS_INCLUDE_DIRS} )' >> ${OFN}
     echo "      list ( APPEND main_${LINK_LIST} \${THREADS_LIBRARIES} )" >> ${OFN}
-    echo '  endif ()' >> ${OFN}
-    echo 'endif ()' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
     echo 'if ( "${FlagDefs}" MATCHES "flagSSL" )' >> ${OFN}
@@ -1027,18 +1046,13 @@ generate_main_cmake_file()
     echo '  if ( OPENSSL_FOUND )' >> ${OFN}
     echo '      include_directories ( ${OPENSSL_INCLUDE_DIRS} )' >> ${OFN}
     echo "      list ( APPEND main_${LINK_LIST} \${OPENSSL_LIBRARIES} )" >> ${OFN}
-    echo '  endif ()' >> ${OFN}
-    echo 'endif ()' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
     echo '# Set compiler options' >> ${OFN}
     echo 'if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )' >> ${OFN}
     echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -std=c++11 -ffunction-sections -fdata-sections" )' >> ${OFN}
-    echo '  if ( ${CMAKE_BUILD_TYPE} STREQUAL RELEASE )' >> ${OFN}
-    echo '      set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -O3" )' >> ${OFN}
-    echo '  elseif ( ${CMAKE_BUILD_TYPE} STREQUAL DEBUG )' >> ${OFN}
-    echo '      set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -O0" )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
     echo >> ${OFN}
     echo '  if ( MINGW )' >> ${OFN}
     echo '      add_definitions ( -DflagWIN32 )' >> ${OFN}
@@ -1076,10 +1090,52 @@ generate_main_cmake_file()
     echo '  set ( CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_C_FLAGS_${BUILD_TYPE}} ${EXTRA_GCC_FLAGS}" )' >> ${OFN}
     echo >> ${OFN}
     echo 'elseif ( MSVC )' >> ${OFN}
-    echo '  if ( ${CMAKE_BUILD_TYPE} STREQUAL RELEASE )' >> ${OFN}
-    echo '      set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -GS-" )' >> ${OFN}
-    echo '  elseif ( ${CMAKE_BUILD_TYPE} STREQUAL DEBUG )' >> ${OFN}
-    echo '      set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -Zi" )' >> ${OFN}
+    echo '  set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -nologo" )' >> ${OFN}
+    echo >> ${OFN}
+    echo '  if ( "${FlagDefs}" MATCHES "flagEVC" )' >> ${OFN}
+    echo '      if ( NOT "${FlagDefs}" MATCHES "flagSH3" AND  NOT "${FlagDefs}" MATCHES "flagSH4" )' >> ${OFN}
+    echo '          # disable stack checking' >> ${OFN}
+    echo '          set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -Gs8192" )' >> ${OFN}
+    echo '      endif()' >> ${OFN}
+    echo '      # read-only string pooling, turn off exception handling' >> ${OFN}
+    echo '      set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -GF -GX-" )' >> ${OFN}
+    echo '  elseif ( "${FlagDefs}" MATCHES "flagCLR" )' >> ${OFN}
+    echo '      set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -EHac" )' >> ${OFN}
+    echo '  elseif ( "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "${FlagDefs}" MATCHES "flagMSC(8|9)ARM" OR "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )' >> ${OFN}
+    echo '      set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -EHsc" )' >> ${OFN}
+    echo '  else()' >> ${OFN}
+    echo '      set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -GX" )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '  if ( ${CMAKE_BUILD_TYPE} STREQUAL DEBUG )' >> ${OFN}
+    echo '      set ( EXTRA_MSVC_FLAGS_Mx "d" )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo '  if ( "${FlagDefs}" MATCHES "flagSHARED" OR "${FlagDefs}" MATCHES "flagCLR" )' >> ${OFN}
+    echo '      set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -MD${EXTRA_MSVC_FLAGS_Mx}" )' >> ${OFN}
+    echo '  else()' >> ${OFN}
+    echo '      if ( "${FlagDefs}" MATCHES "flagMT" OR "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "${FlagDefs}" MATCHES "flagMSC(8|9)ARM" OR "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )' >> ${OFN}
+    echo '          set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -MT${EXTRA_MSVC_FLAGS_Mx}" )' >> ${OFN}
+    echo '      else()' >> ${OFN}
+    echo '          set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -ML${EXTRA_MSVC_FLAGS_Mx}" )' >> ${OFN}
+    echo '      endif()' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '  #,5.01 needed to support WindowsXP' >> ${OFN}
+    echo '  if ( NOT "${FlagDefs}" MATCHES "(flagMSC(8|9|10|11|12|15)X64)" )' >> ${OFN}
+    echo '      set ( MSVC_LINKER_SUBSYSTEM ",5.01" )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo '  if ( "${FlagDefs}" MATCHES "flagMSC(8|9)ARM" )' >> ${OFN}
+    echo '      set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -subsystem:windowsce,4.20 /ARMPADCODE -NODEFAULTLIB:\"oldnames.lib\"" )' >> ${OFN}
+    echo '  else()' >> ${OFN}
+    echo '      if ( "${FlagDefs}" MATCHES "flagGUI" OR "${FlagDefs}" MATCHES "flagMSC(8|9)ARM" )' >> ${OFN}
+    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -subsystem:windows${MSVC_LINKER_SUBSYSTEM}" )' >> ${OFN}
+    echo '      else()' >> ${OFN}
+    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -subsystem:console${MSVC_LINKER_SUBSYSTEM}" )' >> ${OFN}
+    echo '      endif()' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo >> ${OFN}
+    echo '  if ( "${FlagDefs}" MATCHES "flagDLL" )' >> ${OFN}
+    echo '      set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -dll" )' >> ${OFN}
     echo '  endif()' >> ${OFN}
     echo >> ${OFN}
     echo '  set ( CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_CXX_FLAGS_${BUILD_TYPE}} ${EXTRA_MSVC_FLAGS}" )' >> ${OFN}
@@ -1204,7 +1260,7 @@ generate_main_cmake_file()
     echo '  if ( BZIP2_FOUND )' >> ${OFN}
     echo '      include_directories ( ${BZIP_INCLUDE_DIRS} )' >> ${OFN}
     echo "      list ( APPEND main_${LINK_LIST} \${BZIP2_LIBRARIES} )" >> ${OFN}
-    echo '  endif ()' >> ${OFN}
+    echo '  endif()' >> ${OFN}
     echo >> ${OFN}
     echo '  if ( ${CMAKE_SYSTEM_NAME} MATCHES BSD )' >> ${OFN}
     echo '      link_directories ( /usr/local/lib )' >> ${OFN}
