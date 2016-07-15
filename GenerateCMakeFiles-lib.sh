@@ -937,20 +937,53 @@ generate_main_cmake_file()
 #    echo "message ( STATUS \"FlagDefs: \" \${FlagDefs} )" >> ${OFN}
 
     echo >> ${OFN}
-    echo '# Set CLANG compiler flags' >> ${OFN}
-    echo 'if ( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )' >> ${OFN}
-    echo '  set ( CMAKE_COMPILER_IS_CLANG TRUE )' >> ${OFN}
-    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -Wno-logical-op-parentheses" )' >> ${OFN}
-    echo 'endif()' >> ${OFN}
-
-    echo >> ${OFN}
+    echo '# Check supported compilation arch environment' >> ${OFN}
     echo 'if ( "${FlagDefs}" MATCHES "flagGCC32" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )' >> ${OFN}
     echo '  set ( STATUS_COMPILATION "32" )' >> ${OFN}
     echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -m32" )' >> ${OFN}
     echo 'else()' >> ${OFN}
     echo '  set ( STATUS_COMPILATION "64" )' >> ${OFN}
+    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -m64" )' >> ${OFN}
+    echo '  set ( MSVC_ARCH "X64" )' >> ${OFN}
     echo 'endif()' >> ${OFN}
     echo 'message ( STATUS "Build compilation: ${STATUS_COMPILATION} bits" )' >> ${OFN}
+
+    echo >> ${OFN}
+    echo '# Set MSVC compiler flags' >> ${OFN}
+    echo 'if ( MSVC )' >> ${OFN}
+    echo '  if ( ${MSVC_VERSION} EQUAL 1200 )' >> ${OFN}
+    echo '      add_definitions ( -DflagMSC6${MSVC_ARCH} )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo '  if ( ${MSVC_VERSION} EQUAL 1300 OR ${MSVC_VERSION} EQUAL 1310)' >> ${OFN}
+    echo '      add_definitions ( -DflagMSC7${MSVC_ARCH} )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo '  if ( ${MSVC_VERSION} EQUAL 1400 )' >> ${OFN}
+    echo '      add_definitions ( -DflagMSC8${MSVC_ARCH} )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo '  if ( ${MSVC_VERSION} EQUAL 1500 )' >> ${OFN}
+    echo '      add_definitions ( -DflagMSC9${MSVC_ARCH} )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo '  if ( ${MSVC_VERSION} EQUAL 1600 )' >> ${OFN}
+    echo '      add_definitions ( -DflagMSC10${MSVC_ARCH} )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo '  if ( ${MSVC_VERSION} EQUAL 1700 )' >> ${OFN}
+    echo '      add_definitions ( -DflagMSC11${MSVC_ARCH} )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo '  if ( ${MSVC_VERSION} EQUAL 1800 )' >> ${OFN}
+    echo '      add_definitions ( -DflagMSC12${MSVC_ARCH} )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo '  if ( ${MSVC_VERSION} EQUAL 1900 )' >> ${OFN}
+    echo '      add_definitions ( -DflagMSC14${MSVC_ARCH} )' >> ${OFN}
+    echo '  endif()' >> ${OFN}
+    echo '  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
+    echo 'endif()' >> ${OFN}
+
+    echo >> ${OFN}
+    echo '# Set CLANG compiler flags' >> ${OFN}
+    echo 'if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )' >> ${OFN}
+    echo '  set ( CMAKE_COMPILER_IS_CLANG TRUE )' >> ${OFN}
+    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -Wno-logical-op-parentheses" )' >> ${OFN}
+    echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
     echo '# Parse definition flags' >> ${OFN}
@@ -967,7 +1000,7 @@ generate_main_cmake_file()
     echo '  endif()' >> ${OFN}
     echo >> ${OFN}
     echo '  if ( MSVC )' >> ${OFN}
-    echo '      if ( MATCHES "flagMSC(8|9|10|11|12|15)" OR "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )' >> ${OFN}
+    echo '      if ( "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )' >> ${OFN}
     echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -debug -OPT:NOREF" )' >> ${OFN}
     echo '      else()' >> ${OFN}
     echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -incremental:yes -debug -OPT:NOREF" )' >> ${OFN}
@@ -987,7 +1020,7 @@ generate_main_cmake_file()
     echo '  endif()' >> ${OFN}
     echo >> ${OFN}
     echo '  if ( MSVC )' >> ${OFN}
-    echo '      if ( MATCHES "flagMSC(8|9|10|11|12|15)" OR "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )' >> ${OFN}
+    echo '      if ( "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )' >> ${OFN}
     echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -release -OPT:REF,ICF" )' >> ${OFN}
     echo '      else()' >> ${OFN}
     echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -incremental:no -release -OPT:REF,ICF" )' >> ${OFN}
