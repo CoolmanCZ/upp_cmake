@@ -1391,7 +1391,9 @@ generate_main_cmake_file()
     echo >> ${OFN}
     echo "# Main program dependecies" >> ${OFN}
     echo "add_dependencies ( ${main_target_name}${BIN_SUFFIX} ${library_dep})" >> ${OFN}
-    echo "set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES LINK_FLAGS \${MAIN_TARGET_LINK_FLAGS} )" >> ${OFN}
+    echo 'if ( DEFINED MAIN_TARGET_LINK_FLAGS )' >> ${OFN}
+    echo "  set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES LINK_FLAGS \${MAIN_TARGET_LINK_FLAGS} )" >> ${OFN}
+    echo 'endif()' >> ${OFN}
 
     echo >> ${OFN}
     echo "# Main program link" >> ${OFN}
