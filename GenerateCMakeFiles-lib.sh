@@ -339,11 +339,12 @@ link_parse()
     options=$(if_options_parse_all "${options}")              # Parse options
 
     parameters=$(string_get_after_parenthesis "${line}")
-    parameters=$(string_remove_comma "${parameters}")
+    parameters="${parameters//;}"
+    parameters="${parameters//\"}"
 
     if [ -n "${options}" ]; then
         echo "if (${options})" >> ${OFN}
-        echo "      set_target_properties ( ${target_name} PROPERTIES LINK_FLAGS ${parameters} )" >> ${OFN}
+        echo "  SET ( MAIN_TARGET_LINK_FLAGS "\${MAIN_TARGET_LINK_FLAGS} ${parameters}" PARENT_SCOPE )" >> ${OFN}
         echo "endif()" >> ${OFN}
     fi
 }
@@ -1126,6 +1127,14 @@ generate_main_cmake_file()
     echo '  set ( CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
     echo >> ${OFN}
     echo 'elseif ( MSVC )' >> ${OFN}
+    echo '  add_definitions ( -DflagMSC )' >> ${OFN}
+    echo '  add_definitions ( -DflagWIN32 )' >> ${OFN}
+    echo '  remove_definitions( -DflagPOSIX )' >> ${OFN}
+    echo '  remove_definitions( -DflagLINUX )' >> ${OFN}
+    echo '  remove_definitions( -DflagFREEBSD )' >> ${OFN}
+    echo '  remove_definitions( -DflagSOLARIS )' >> ${OFN}
+    echo '  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
+    echo >> ${OFN}
     echo '  set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -nologo" )' >> ${OFN}
     echo >> ${OFN}
     echo '  if ( "${FlagDefs}" MATCHES "flagEVC" )' >> ${OFN}
@@ -1318,10 +1327,12 @@ generate_main_cmake_file()
                 png_lib_added="done"
                 echo >> ${OFN}
                 echo '# Add PNG library' >> ${OFN}
-                echo 'find_package ( PNG REQUIRED )' >> ${OFN}
-                echo 'if ( PNG_FOUND )' >> ${OFN}
-                echo '  include_directories( ${PNG_INCLUDE_DIR} )' >> ${OFN}
-                echo "  list ( APPEND main_${LINK_LIST} \${PNG_LIBRARIES} )" >> ${OFN}
+                echo 'if ( NOT "${FlagDefs}" MATCHES "flagWIN32" )' >> ${OFN}
+                echo '  find_package ( PNG REQUIRED )' >> ${OFN}
+                echo '  if ( PNG_FOUND )' >> ${OFN}
+                echo '      include_directories( ${PNG_INCLUDE_DIR} )' >> ${OFN}
+                echo "      list ( APPEND main_${LINK_LIST} \${PNG_LIBRARIES} )" >> ${OFN}
+                echo '  endif()' >> ${OFN}
                 echo 'endif()' >> ${OFN}
                 echo >> ${OFN}
             fi
@@ -1380,10 +1391,11 @@ generate_main_cmake_file()
     echo >> ${OFN}
     echo "# Main program dependecies" >> ${OFN}
     echo "add_dependencies ( ${main_target_name}${BIN_SUFFIX} ${library_dep})" >> ${OFN}
+    echo "set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES LINK_FLAGS \${MAIN_TARGET_LINK_FLAGS} )" >> ${OFN}
 
     echo >> ${OFN}
     echo "# Main program link" >> ${OFN}
-    echo "target_link_libraries ( ${main_target_name}${BIN_SUFFIX} \${main_$LINK_LIST} ${library_dep} \${MAIN_TARGET_LINK_LIBRARY} )" >> ${OFN}
+    echo "target_link_libraries ( ${main_target_name}${BIN_SUFFIX} \${main_$LINK_LIST} ${library_dep} )" >> ${OFN}
 
     echo >> ${OFN}
     echo "set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES OUTPUT_NAME ${main_target_name} )" >> ${OFN}
