@@ -1361,6 +1361,7 @@ generate_main_cmake_file()
     echo 'string ( REGEX REPLACE "^0" "" bmMONTH ${bmMONTH} )' >> ${OFN}
     echo 'string ( REGEX REPLACE "^0" "" bmDAY ${bmDAY} )' >> ${OFN}
     echo 'string ( REGEX REPLACE "^0" "" bmHOUR ${bmHOUR} )' >> ${OFN}
+    echo 'string ( REGEX REPLACE "^0" "" bmMINUTE ${bmMINUTE} )' >> ${OFN}
     echo 'string ( REGEX REPLACE "^0" "" bmSECOND ${bmSECOND} )' >> ${OFN}
     echo 'cmake_host_system_information ( RESULT bmHOSTNAME QUERY HOSTNAME )'>> ${OFN}
     echo 'file ( WRITE  ${BUILD_INFO_H} "#define bmYEAR ${bmYEAR}\n#define bmMONTH ${bmMONTH}\n#define bmDAY ${bmDAY}\n" )' >> ${OFN}
