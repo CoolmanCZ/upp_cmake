@@ -20,7 +20,7 @@ generate_main_cmake_file <full path to the ultimate++ project file> [build flags
 - Binary resource support (BINARY, BINARY_MASK, BINARY_ARRAY)
 - Cross compile support (require MINGW GCC 4.9+)
 - (MSYS2) MINGW support
-- Generated CMakeLists.txt files can be used to create an MS Visual C++ project
+- Generated CMakeLists.txt files can be used to create a MS Visual C++ project
 - Generated CMakeLists.txt files are generated only for dependent modules of the processed Ultimate++ project
 - Create a distribution package
 

@@ -24,6 +24,10 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+GENERATE_VERBOSE="1"
+GENERATE_DEBUG="1"
+GENERATE_PACKAGE="1"
+
 source ./GenerateCMakeFiles-lib.sh
 
 UPP_SRC_BASE="upp-x11-src-2016-07-11"
@@ -34,10 +38,6 @@ PROJECT_FLAGS="-DflagGUI -DflagMT -DflagGCC -DflagLINUX -DflagPOSIX -DflagSHARED
 
 #PROJECT_NAME="${UPP_SRC_BASE}/reference/brc/brc.upp"
 #PROJECT_FLAGS="-DflagLINUX -DflagPOSIX -DflagDEBUG"
-
-GENERATE_VERBOSE="1"
-GENERATE_DEBUG="1"
-GENERATE_PACKAGE="1"
 
 generate_main_cmake_file "${PROJECT_NAME}" "${PROJECT_FLAGS}"
 
@@ -69,6 +69,7 @@ if [ "${GENERATE_PACKAGE}" == "1" ]; then
     done
 
     tar -c -j -f ${package_src_name_archive} -T ${package_src_name_archive_list}
+    rm ${package_src_name_archive_list}
 
     echo "... DONE"
 fi
