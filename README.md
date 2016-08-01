@@ -5,9 +5,9 @@ This script was created based on discussion on the Ultimate++ forum - [CMake sup
 
 ## Using
 Using of the script is demonstrated in the example.sh, where you should change the variables:
-* 1. "UPP_SRC_DIR" - directory path of the Ultimate++ source tree
-* 2. "PROJECT_NAME" - full path to the ultimate++ project file
-* 2. "PROJECT_FLAGS" - build flags
+* "UPP_SRC_DIR" - directory path of the Ultimate++ source tree
+* "PROJECT_NAME" - full path to the ultimate++ project file
+* "PROJECT_FLAGS" - build flags
 
 ## Parameters
 Parameters of the "generate_main_cmake_file" are
