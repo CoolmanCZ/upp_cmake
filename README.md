@@ -4,14 +4,15 @@ GenerateCMakeFiles-lib.sh is the bash script for generating CMakeLists.txt files
 This script was created based on discussion on the Ultimate++ forum - [CMake support](http://www.ultimatepp.org/forums/index.php?t=msg&th=6013&goto=32310&#msg_32310)
 
 ## Using
-Using of the script is demonstrated in the example.sh where you should change:
-1. The variable "UPP_SRC_DIR" - directory path of the Ultimate++ source tree
-2. Parameters of the command "generate_main_cmake_file"
+Using of the script is demonstrated in the example.sh, where you should change the variables:
+* 1. "UPP_SRC_DIR" - directory path of the Ultimate++ source tree
+* 2. "PROJECT_NAME" - full path to the ultimate++ project file
+* 2. "PROJECT_FLAGS" - build flags
 
 ## Parameters
 Parameters of the "generate_main_cmake_file" are
 ```
-generate_main_cmake_file <full path to the ultimate++ project file> [build flags]
+generate_main_cmake_file <${PROJECT_NAME}> [${PROJECT_FLAGS}]
 ```
 
 ## Support
