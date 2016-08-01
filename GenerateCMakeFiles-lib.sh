@@ -49,7 +49,7 @@ RE_BRC='\.(brc)$'
 RE_USES='^uses\('
 RE_LINK='^link\('
 RE_LIBRARY='^library\('
-RE_OPTIONS='^options\('
+RE_OPTIONS='^options'
 RE_DEPEND='^uses$'
 RE_FILES='^file$'
 RE_MAINCONFIG='^mainconfig'
@@ -611,9 +611,11 @@ generate_cmake_from_upp()
     local SOURCE=()
     local SOURCE_RC=()
     local SOURCE_ICPP=()
-    local uses_start=""
-    local files_start=""
-    local mainconfig_start=""
+    local OPTIONS=()
+    local depend_start=0
+    local options_start=0
+    local files_start=0
+    local mainconfig_start=0
     local tmp=""
     local list=""
     local line=""
@@ -622,6 +624,7 @@ generate_cmake_from_upp()
     if [ -f "${upp_ext}" ]; then
         local target_name="$(string_replace_dash "${object_name}")"
 
+        # _start: 0 = not in the block, 1 = in the block, 2 = in the block with the end, -1 = block done
         while read line; do
             # Parse compiler options
             if [[ ${line} =~ $RE_USES ]]; then
@@ -633,9 +636,20 @@ generate_cmake_from_upp()
                 list_parse "${line}" ${LINK_LIST}
             fi
 
-            # Parse project options
+            # Begin of the options section
             if [[ ${line} =~ $RE_OPTIONS ]]; then
-                options_parse "${line}"
+                options_start=1
+                # Parse project options with the condition
+                if [[ ${line} =~ '(' ]] && [[ ${line} =~ ';' ]]; then
+                    options_parse "${line}"
+                    options_start=0
+                fi
+                continue;
+            fi
+
+            # End of the options section (line with ';')
+            if [ ${options_start} -gt 0 ] && [[ ${line} =~ ';' ]]; then
+                options_start=2
             fi
 
             # Parse link options
@@ -643,51 +657,51 @@ generate_cmake_from_upp()
                 link_parse "${line}" "${target_name}"
             fi
 
-            # Begin of dependency section
+            # Begin of the dependency section
             if [[ ${line} =~ $RE_DEPEND ]]; then
-                uses_start="1"
+                depend_start=1
                 continue
             fi
 
-            # End of dependency section (by empty line)
-            if [ -n "${uses_start}" ] && [ -z "${line}" ]; then
-                uses_start=""
+            # End of the dependency section (line with ';')
+            if [ ${depend_start} -gt 0 ] && [[ ${line} =~ ';' ]]; then
+                depend_start=2
             fi
 
-            # Begin of files section
+            # Begin of the files section
             if [[ ${line} =~ $RE_FILES ]]; then
-                files_start="1"
+                files_start=1
                 continue
             fi
 
-            # End of file section (by empty line)
-            if [ -n "${files_start}" ] && [ -z "${line}" ]; then
-                files_start=""
+            # End of the files section (line with ';')
+            if [ ${files_start} -gt 0 ] && [[ ${line} =~ ';' ]]; then
+                files_start=2
             fi
 
-            # Begin of mainconfig section
+            # Begin of the mainconfig section
             if [[ ${line} =~ $RE_MAINCONFIG ]]; then
-                mainconfig_start="1"
+                mainconfig_start=1
                 continue
             fi
 
-            # End of mainconfig section (by empty line)
-            if [ -n "${mainconfig_start}" ] && [ -z "${line}" ]; then
-                mainconfig_start=""
+            # End of the mainconfig section (line with ';')
+            if [ ${mainconfig_start} -gt 0 ] && [[ ${line} =~ ';' ]]; then
+                mainconfig_start=2
             fi
 
             # Skip lines with "separator" mark
-            if [ -n "${files_start}" ] && [[ ${line} =~ $RE_SEPARATOR ]]; then
+            if [ ${files_start} -gt 0 ] && [[ ${line} =~ $RE_SEPARATOR ]]; then
                 continue;
             fi
 
             # Split lines with charset, options, ...
-            if [ -n "${files_start}" ] && [[ "${line}" =~ $RE_FILE_SPLIT ]]; then
+            if [ ${files_start} -gt 0 ] && [[ "${line}" =~ $RE_FILE_SPLIT ]]; then
                 line="${line// */}"
             fi
 
             # Parse file names
-            if [ -n "${files_start}" ]; then
+            if [ ${files_start} -gt 0 ]; then
                 line_array=(${line})
                 for list in "${line_array[@]}"; do
                     list=${list//,}
@@ -714,29 +728,57 @@ generate_cmake_from_upp()
                         fi
                     fi
                 done
+                if [ $files_start -eq 2 ]; then
+                    files_start=-1
+                fi
             fi
 
             # Parse dependency
-            if [ -n "${uses_start}" ]; then
+            if [ ${depend_start} -gt 0 ]; then
                 tmp="${line//,}"
                 USES+=(${tmp//;})
                 UPP_ALL_USES+=(${tmp//;})
+                if [ $depend_start -eq 2 ]; then
+                    depend_start=-1
+                fi
             fi
 
             # Parse mainconfig
-            if [ -n "${mainconfig_start}" ]; then
+            if [ ${mainconfig_start} -gt 0 ]; then
                 if [[ ${line} =~ "GUI" ]]; then
                     FLAG_GUI="1"
                 fi
                 if [[ ${line} =~ "MT" ]]; then
                     FLAG_MT="1"
                 fi
+                if [ $mainconfig_start -eq 2 ]; then
+                    depend_start=-1
+                fi
+            fi
+
+            # Parse options
+            if [ ${options_start} -gt 0 ]; then
+                tmp="${line//,}"
+                OPTIONS+=(${tmp//;})
+                if [ $options_start -eq 2 ]; then
+                    options_start=-1
+                fi
             fi
 
         done < <(sed 's#\\#/#g' "${upp_ext}")
 
+        # Create project option definitions
+        if [ -n "${OPTIONS}" ] ; then
+            echo >> ${OFN}
+            echo "add_definitions (" >> ${OFN}
+            for list in "${OPTIONS[@]}"; do
+                echo "${list}" >> ${OFN}
+            done
+            echo ")" >> ${OFN}
+        fi
+
         # Create header files list
-        if [ -n ${HEADER} ] ; then
+        if [ -n "${HEADER}" ] ; then
             echo >> ${OFN}
             echo "list ( APPEND ${HEADER_LIST}" >> ${OFN}
             for list in "${HEADER[@]}"; do
@@ -746,7 +788,7 @@ generate_cmake_from_upp()
         fi
 
         # Create source files list
-        if [ -n ${SOURCE} ] ; then
+        if [ -n "${SOURCE}" ] ; then
             echo >> ${OFN}
             echo "list ( APPEND ${SOURCE_LIST}" >> ${OFN}
             for list in "${SOURCE[@]}"; do
@@ -756,7 +798,7 @@ generate_cmake_from_upp()
         fi
 
         # Create icpp source files list
-        if [ -n ${SOURCE_ICPP} ] ; then
+        if [ -n "${SOURCE_ICPP}" ] ; then
             echo >> ${OFN}
             echo "list ( APPEND ${SOURCE_LIST_ICPP}" >> ${OFN}
             for list in "${SOURCE_ICPP[@]}"; do
@@ -766,7 +808,7 @@ generate_cmake_from_upp()
         fi
 
         # Create dependency list
-        if [ -n ${USES} ] ; then
+        if [ -n "${USES}" ] ; then
             echo >> ${OFN}
             echo "list ( APPEND ${target_name}_${DEPEND_LIST}" >> ${OFN}
             for list in "${USES[@]}"; do
