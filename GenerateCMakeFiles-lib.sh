@@ -938,6 +938,32 @@ get_upp_to_process()
 
 }
 
+generate_package_file()
+{
+    echo -n "Creating archive "
+
+    declare -A sorted_UPP_ALL_USES_DONE=$(printf "%s\n" "${UPP_ALL_USES_DONE[@]}" | sort -u);
+
+    package_src_name_archive=$(basename ${PROJECT_NAME}).tar.bz2
+    package_src_name_archive_list="package_archive_list.txt"
+
+    echo "CMakeLists.txt" > ${package_src_name_archive_list}
+
+    find $(dirname ${PROJECT_NAME}) -name '*' -type f >> ${package_src_name_archive_list}
+
+    echo "${UPP_SRC_DIR}/uppconfig.h" >> ${package_src_name_archive_list}
+    echo "${UPP_SRC_DIR}/guiplatform.h" >> ${package_src_name_archive_list}
+
+    for pkg_name in ${sorted_UPP_ALL_USES_DONE[@]}; do
+        find ${UPP_SRC_DIR}/${pkg_name} -name '*' -type f >> ${package_src_name_archive_list}
+    done
+
+    tar -c -j -f ${package_src_name_archive} -T ${package_src_name_archive_list}
+    rm ${package_src_name_archive_list}
+
+    echo "... DONE"
+}
+
 generate_main_cmake_file()
 {
     local main_target="${1}"
@@ -1427,5 +1453,19 @@ target_link_libraries ( ${main_target_name}${BIN_SUFFIX} \${main_$LINK_LIST} ${l
 set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES OUTPUT_NAME ${main_target_name} )
 EOL
 # End of the cat (CMakeFiles.txt)
+
+    # Show used plugins
+    if [ "${GENERATE_DEBUG}" == "1" ]; then
+        declare -A sorted_UPP_ALL_USES=$(printf "%s\n" "${UPP_ALL_USES[@]}" | sort -u);
+        declare -A sorted_UPP_ALL_USES_DONE=$(printf "%s\n" "${UPP_ALL_USES_DONE[@]}" | sort -u);
+
+        echo "Plugins used   : " ${sorted_UPP_ALL_USES[@]}
+        echo "CMake generated: " ${sorted_UPP_ALL_USES_DONE[@]}
+    fi
+
+    # Generate package file
+    if [ "${GENERATE_PACKAGE}" == "1" ]; then
+        generate_package_file
+    fi
 }
 
