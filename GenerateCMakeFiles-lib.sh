@@ -575,30 +575,30 @@ binary_resource_parse()
 
 generate_cmake_header()
 {
-    echo "# ${OFN} generated $(export LC_ALL=C; date)" > ${OFN}
-    echo "cmake_minimum_required ( VERSION 2.8 )" >> ${OFN}
+    cat > ${OFN} << EOL
+# ${OFN} generated $(export LC_ALL=C; date)
+cmake_minimum_required ( VERSION 2.8 )
 
-    echo >> ${OFN}
-    echo "#################################################" >> ${OFN}
-    echo "# In-Source builds are strictly prohibited." >> ${OFN}
-    echo "#################################################" >> ${OFN}
+#################################################
+# In-Source builds are strictly prohibited.
+#################################################
+if ( \${CMAKE_SOURCE_DIR} STREQUAL \${CMAKE_BINARY_DIR} )
+  message ( FATAL_ERROR
+  "\n****************************** ERROR ******************************\n"
+  "In-source build are not allowed. "
+  "Please do not polute the sources with binaries or any project unrelated files. "
+  "To remove generated files run:\n"
+  "'rm -rf CMakeCache.txt CMakeFiles'\n"
+  "To build the project, please do the following:\n"
+  "'mkdir build && cd build && cmake ..'"
+  "\n****************************** ERROR ******************************\n")
+endif()
 
-    echo "if ( \${CMAKE_SOURCE_DIR} STREQUAL \${CMAKE_BINARY_DIR} )" >> ${OFN}
-    echo "  message ( FATAL_ERROR" >> ${OFN}
-    echo "  \"\n****************************** ERROR ******************************\n\"" >> ${OFN}
-    echo "  \"In-source build are not allowed. \"" >> ${OFN}
-    echo "  \"Please do not polute the sources with binaries or any project unrelated files. \"" >> ${OFN}
-    echo "  \"To remove generated files run:\n\"" >> ${OFN}
-    echo "  \"'rm -rf CMakeCache.txt CMakeFiles'\n\"" >> ${OFN}
-    echo "  \"To build the project, please do the following:\n\"" >> ${OFN}
-    echo "  \"'mkdir build && cd build && cmake ..'\"" >> ${OFN}
-    echo "  \"\n****************************** ERROR ******************************\n\")" >> ${OFN}
-    echo "endif()" >> ${OFN}
+# Set the default path for built libraries to the lib directory
+set ( LIBRARY_OUTPUT_PATH \${PROJECT_BINARY_DIR}/lib )
+include_directories ( BEFORE \${PROJECT_BINARY_DIR}/inc )
 
-    echo >> ${OFN}
-    echo "# Set the default path for built libraries to the lib directory" >> ${OFN}
-    echo "set ( LIBRARY_OUTPUT_PATH \${PROJECT_BINARY_DIR}/lib )" >> ${OFN}
-    echo "include_directories ( BEFORE \${PROJECT_BINARY_DIR}/inc )" >> ${OFN}
+EOL
 }
 
 generate_cmake_from_upp()
@@ -959,14 +959,6 @@ generate_main_cmake_file()
 
     generate_cmake_header
 
-    echo >> ${OFN}
-    echo "# Set the default path for built executables to the bin directory" >> ${OFN}
-    echo "set ( EXECUTABLE_OUTPUT_PATH \${PROJECT_BINARY_DIR}/bin )" >> ${OFN}
-
-    echo >> ${OFN}
-    echo "# Project definitions" >> ${OFN}
-    echo "add_definitions ( "${main_definitions}" )" >> ${OFN}
-
 #    if [ -n "${FLAG_MT}" ]; then
 #        echo 'add_definitions ( -DflagMT )' >> ${OFN}
 #    fi
@@ -974,381 +966,374 @@ generate_main_cmake_file()
 #        echo 'add_definitions ( -DflagGUI )' >> ${OFN}
 #    fi
 
-    echo >> ${OFN}
-    echo '# Read compiler definitions - used to set appropriate modules' >> ${OFN}
-    echo 'get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
-#    echo "message ( STATUS \"FlagDefs: \" \${FlagDefs} )" >> ${OFN}
+    # Begin of the cat (CMakeFiles.txt)
+    cat >> ${OFN} << EOL
+# Set the default path for built executables to the bin directory
+set ( EXECUTABLE_OUTPUT_PATH \${PROJECT_BINARY_DIR}/bin )
 
-    echo >> ${OFN}
-    echo '# Check supported compilation arch environment' >> ${OFN}
-    echo 'if ( "${FlagDefs}" MATCHES "flagGCC32" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )' >> ${OFN}
-    echo '  set ( STATUS_COMPILATION "32" )' >> ${OFN}
-    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -m32" )' >> ${OFN}
-    echo 'else()' >> ${OFN}
-    echo '  set ( STATUS_COMPILATION "64" )' >> ${OFN}
-    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -m64" )' >> ${OFN}
-    echo '  set ( MSVC_ARCH "X64" )' >> ${OFN}
-    echo 'endif()' >> ${OFN}
-    echo 'message ( STATUS "Build compilation: ${STATUS_COMPILATION} bits" )' >> ${OFN}
+# Project definitions
+add_definitions ( ${main_definitions} )
 
-    echo >> ${OFN}
-    echo '# Set MSVC compiler flags' >> ${OFN}
-    echo 'if ( MSVC )' >> ${OFN}
-    echo '  if ( ${MSVC_VERSION} EQUAL 1200 )' >> ${OFN}
-    echo '      add_definitions ( -DflagMSC6${MSVC_ARCH} )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo '  if ( ${MSVC_VERSION} EQUAL 1300 OR ${MSVC_VERSION} EQUAL 1310)' >> ${OFN}
-    echo '      add_definitions ( -DflagMSC7${MSVC_ARCH} )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo '  if ( ${MSVC_VERSION} EQUAL 1400 )' >> ${OFN}
-    echo '      add_definitions ( -DflagMSC8${MSVC_ARCH} )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo '  if ( ${MSVC_VERSION} EQUAL 1500 )' >> ${OFN}
-    echo '      add_definitions ( -DflagMSC9${MSVC_ARCH} )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo '  if ( ${MSVC_VERSION} EQUAL 1600 )' >> ${OFN}
-    echo '      add_definitions ( -DflagMSC10${MSVC_ARCH} )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo '  if ( ${MSVC_VERSION} EQUAL 1700 )' >> ${OFN}
-    echo '      add_definitions ( -DflagMSC11${MSVC_ARCH} )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo '  if ( ${MSVC_VERSION} EQUAL 1800 )' >> ${OFN}
-    echo '      add_definitions ( -DflagMSC12${MSVC_ARCH} )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo '  if ( ${MSVC_VERSION} EQUAL 1900 )' >> ${OFN}
-    echo '      add_definitions ( -DflagMSC14${MSVC_ARCH} )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo '  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
-    echo 'endif()' >> ${OFN}
+# Read compiler definitions - used to set appropriate modules
+get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 
-    echo >> ${OFN}
-    echo '# Set CLANG compiler flags' >> ${OFN}
-    echo 'if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )' >> ${OFN}
-    echo '  set ( CMAKE_COMPILER_IS_CLANG TRUE )' >> ${OFN}
-    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -Wno-logical-op-parentheses" )' >> ${OFN}
-    echo 'endif()' >> ${OFN}
+# Check supported compilation arch environment
+if ( "\${FlagDefs}" MATCHES "flagGCC32" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )
+  set ( STATUS_COMPILATION "32" )
+  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -m32" )
+else()
+  set ( STATUS_COMPILATION "64" )
+  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -m64" )
+  set ( MSVC_ARCH "X64" )
+endif()
+message ( STATUS "Build compilation: \${STATUS_COMPILATION} bits" )
 
-    echo >> ${OFN}
-    echo '# Parse definition flags' >> ${OFN}
-    echo 'if ( "${FlagDefs}" MATCHES "flagDEBUG" )' >> ${OFN}
-    echo '  set ( CMAKE_VERBOSE_MAKEFILE 1 )' >> ${OFN}
-    echo '  set ( CMAKE_BUILD_TYPE DEBUG )' >> ${OFN}
-    echo '  add_definitions ( -D_DEBUG )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -O0" )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ( NOT "${FlagDefs}" MATCHES "(flagDEBUG)[;$]" )' >> ${OFN}
-    echo '      add_definitions ( -DflagDEBUG )' >> ${OFN}
-    echo '      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ( MSVC )' >> ${OFN}
-    echo '      if ( "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )' >> ${OFN}
-    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -debug -OPT:NOREF" )' >> ${OFN}
-    echo '      else()' >> ${OFN}
-    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -incremental:yes -debug -OPT:NOREF" )' >> ${OFN}
-    echo '      endif()' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo 'else()' >> ${OFN}
-    echo '  set ( CMAKE_VERBOSE_MAKEFILE 0 )' >> ${OFN}
-    echo '  set ( CMAKE_BUILD_TYPE RELEASE )' >> ${OFN}
-    echo '  add_definitions ( -D_RELEASE )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -O3" )' >> ${OFN}
-    echo '  set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -GS-" )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )' >> ${OFN}
-    echo '      set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -ffunction-sections -fdata-sections" )' >> ${OFN}
-    echo '      set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-s,--gc-sections" )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ( MSVC )' >> ${OFN}
-    echo '      if ( "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )' >> ${OFN}
-    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -release -OPT:REF,ICF" )' >> ${OFN}
-    echo '      else()' >> ${OFN}
-    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -incremental:no -release -OPT:REF,ICF" )' >> ${OFN}
-    echo '      endif()' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo 'endif()' >> ${OFN}
-    echo 'message ( STATUS "Build type: " ${CMAKE_BUILD_TYPE} )' >> ${OFN}
+# Set MSVC compiler flags
+if ( MSVC )
+  if ( \${MSVC_VERSION} EQUAL 1200 )
+      add_definitions ( -DflagMSC6\${MSVC_ARCH} )
+  endif()
+  if ( \${MSVC_VERSION} EQUAL 1300 OR \${MSVC_VERSION} EQUAL 1310)
+      add_definitions ( -DflagMSC7\${MSVC_ARCH} )
+  endif()
+  if ( \${MSVC_VERSION} EQUAL 1400 )
+      add_definitions ( -DflagMSC8\${MSVC_ARCH} )
+  endif()
+  if ( \${MSVC_VERSION} EQUAL 1500 )
+      add_definitions ( -DflagMSC9\${MSVC_ARCH} )
+  endif()
+  if ( \${MSVC_VERSION} EQUAL 1600 )
+      add_definitions ( -DflagMSC10\${MSVC_ARCH} )
+  endif()
+  if ( \${MSVC_VERSION} EQUAL 1700 )
+      add_definitions ( -DflagMSC11\${MSVC_ARCH} )
+  endif()
+  if ( \${MSVC_VERSION} EQUAL 1800 )
+      add_definitions ( -DflagMSC12\${MSVC_ARCH} )
+  endif()
+  if ( \${MSVC_VERSION} EQUAL 1900 )
+      add_definitions ( -DflagMSC14\${MSVC_ARCH} )
+  endif()
+  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
+endif()
 
-    echo >> ${OFN}
-    echo 'if ( "${FlagDefs}" MATCHES "flagDEBUG_MINIMAL" )' >> ${OFN}
-    echo '  if ( NOT MINGW )' >> ${OFN}
-    echo '      set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -ggdb" )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -g1" )' >> ${OFN}
-    echo '  set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -Zd" )' >> ${OFN}
-    echo 'endif()' >> ${OFN}
+# Set CLANG compiler flags
+if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
+  set ( CMAKE_COMPILER_IS_CLANG TRUE )
+  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -Wno-logical-op-parentheses" )
+endif()
 
-    echo >> ${OFN}
-    echo 'if ( "${FlagDefs}" MATCHES "flagDEBUG_FULL" )' >> ${OFN}
-    echo '  if ( NOT MINGW )' >> ${OFN}
-    echo '      set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -ggdb" )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -g2" )' >> ${OFN}
-    echo '  set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -Zi" )' >> ${OFN}
-    echo 'endif()' >> ${OFN}
+# Parse definition flags
+if ( "\${FlagDefs}" MATCHES "flagDEBUG" )
+  set ( CMAKE_VERBOSE_MAKEFILE 1 )
+  set ( CMAKE_BUILD_TYPE DEBUG )
+  add_definitions ( -D_DEBUG )
 
-    echo >> ${OFN}
-    echo 'if ( "${FlagDefs}" MATCHES "flagSHARED" )' >> ${OFN}
-    echo '  set ( STATUS_SHARED "TRUE" )' >> ${OFN}
-    echo '  set ( EXTRA_GXX_FLAGS "${EXTRA_GXX_FLAGS} -fuse-cxa-atexit" )' >> ${OFN}
-    echo 'else()' >> ${OFN}
-    echo '  set ( STATUS_SHARED "FALSE" )' >> ${OFN}
-    echo '  set ( BUILD_SHARED_LIBS OFF )' >> ${OFN}
-    echo '  set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -static -fexceptions" )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ( MINGW )' >> ${OFN}
-    echo '      set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc" )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo 'endif()' >> ${OFN}
-    echo 'message ( STATUS "Build with flagSHARED: ${STATUS_SHARED}" )' >> ${OFN}
+  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -O0" )
 
-    echo >> ${OFN}
-    echo 'if ( "${FlagDefs}" MATCHES "flagMT" )' >> ${OFN}
-    echo '  find_package ( Threads REQUIRED )' >> ${OFN}
-    echo '  if ( THREADS_FOUND )' >> ${OFN}
-    echo '      include_directories ( ${THREADS_INCLUDE_DIRS} )' >> ${OFN}
-    echo "      list ( APPEND main_${LINK_LIST} \${THREADS_LIBRARIES} )" >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo 'endif()' >> ${OFN}
+  if ( NOT "\${FlagDefs}" MATCHES "(flagDEBUG)[;$]" )
+      add_definitions ( -DflagDEBUG )
+      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
+  endif()
 
-    echo >> ${OFN}
-    echo 'if ( "${FlagDefs}" MATCHES "flagSSL" )' >> ${OFN}
-    echo '  find_package ( OpenSSL REQUIRED )' >> ${OFN}
-    echo '  if ( OPENSSL_FOUND )' >> ${OFN}
-    echo '      include_directories ( ${OPENSSL_INCLUDE_DIRS} )' >> ${OFN}
-    echo "      list ( APPEND main_${LINK_LIST} \${OPENSSL_LIBRARIES} )" >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo 'endif()' >> ${OFN}
+  if ( MSVC )
+      if ( "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )
+          set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -debug -OPT:NOREF" )
+      else()
+          set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -incremental:yes -debug -OPT:NOREF" )
+      endif()
+  endif()
+else()
+  set ( CMAKE_VERBOSE_MAKEFILE 0 )
+  set ( CMAKE_BUILD_TYPE RELEASE )
+  add_definitions ( -D_RELEASE )
 
-    echo >> ${OFN}
-    echo '# Set compiler options' >> ${OFN}
-    echo 'if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )' >> ${OFN}
-    echo '  set ( EXTRA_GXX_FLAGS "${EXTRA_GXX_FLAGS} -std=c++11" )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ( MINGW )' >> ${OFN}
-    echo '      add_definitions ( -DflagWIN32 )' >> ${OFN}
-    echo '      remove_definitions( -DflagPOSIX )' >> ${OFN}
-    echo '      remove_definitions( -DflagLINUX )' >> ${OFN}
-    echo '      remove_definitions( -DflagFREEBSD )' >> ${OFN}
-    echo '      remove_definitions( -DflagSOLARIS )' >> ${OFN}
-    echo '      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
-    echo >> ${OFN}
-    echo '      set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -mwindows" )' >> ${OFN}
-    echo >> ${OFN}
-    echo '      if ( "${FlagDefs}" MATCHES "flagDLL" )' >> ${OFN}
-    echo '          set ( BUILD_SHARED_LIBS ON )' >> ${OFN}
-    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -shared" )' >> ${OFN}
-    echo '          string ( REGEX REPLACE "-static " "" CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} )' >> ${OFN}
-    echo '      endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '      if ("${FlagDefs}" MATCHES "flagGUI" )' >> ${OFN}
-    echo "          list ( APPEND main_${LINK_LIST} mingw32 )" >> ${OFN}
-    echo '      else()' >> ${OFN}
-    echo '          set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -mconsole" )' >> ${OFN}
-    echo '      endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '      if ( "${FlagDefs}" MATCHES "flagMT" )' >> ${OFN}
-    echo '          set ( EXTRA_GCC_FLAGS "${EXTRA_GCC_FLAGS} -mthreads" )' >> ${OFN}
-    echo '      endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '      # The optimalization might be broken on MinGW - remove optimalization flag (cross compile).' >> ${OFN}
-    echo '      string ( REGEX REPLACE "-O3" "" EXTRA_GCC_FLAGS ${EXTRA_GCC_FLAGS} )' >> ${OFN}
-    echo >> ${OFN}
-    echo '      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  set ( CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_CXX_FLAGS_${BUILD_TYPE}} ${EXTRA_GXX_FLAGS} ${EXTRA_GCC_FLAGS}" )' >> ${OFN}
-    echo '  set ( CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_C_FLAGS_${BUILD_TYPE}} ${EXTRA_GCC_FLAGS}" )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  set ( CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
-    echo '  set ( CMAKE_CXX_ARCHIVE_APPEND "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
-    echo '  set ( CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
-    echo '  set ( CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )' >> ${OFN}
-    echo >> ${OFN}
-    echo 'elseif ( MSVC )' >> ${OFN}
-    echo '  add_definitions ( -DflagMSC )' >> ${OFN}
-    echo '  add_definitions ( -DflagWIN32 )' >> ${OFN}
-    echo '  remove_definitions( -DflagPOSIX )' >> ${OFN}
-    echo '  remove_definitions( -DflagLINUX )' >> ${OFN}
-    echo '  remove_definitions( -DflagFREEBSD )' >> ${OFN}
-    echo '  remove_definitions( -DflagSOLARIS )' >> ${OFN}
-    echo '  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -nologo" )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ( "${FlagDefs}" MATCHES "flagEVC" )' >> ${OFN}
-    echo '      if ( NOT "${FlagDefs}" MATCHES "flagSH3" AND  NOT "${FlagDefs}" MATCHES "flagSH4" )' >> ${OFN}
-    echo '          # disable stack checking' >> ${OFN}
-    echo '          set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -Gs8192" )' >> ${OFN}
-    echo '      endif()' >> ${OFN}
-    echo '      # read-only string pooling, turn off exception handling' >> ${OFN}
-    echo '      set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -GF -GX-" )' >> ${OFN}
-    echo '  elseif ( "${FlagDefs}" MATCHES "flagCLR" )' >> ${OFN}
-    echo '      set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -EHac" )' >> ${OFN}
-    echo '  elseif ( "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "${FlagDefs}" MATCHES "flagMSC(8|9)ARM" OR "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )' >> ${OFN}
-    echo '      set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -EHsc" )' >> ${OFN}
-    echo '  else()' >> ${OFN}
-    echo '      set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -GX" )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ( ${CMAKE_BUILD_TYPE} STREQUAL DEBUG )' >> ${OFN}
-    echo '      set ( EXTRA_MSVC_FLAGS_Mx "d" )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo '  if ( "${FlagDefs}" MATCHES "flagSHARED" OR "${FlagDefs}" MATCHES "flagCLR" )' >> ${OFN}
-    echo '      set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -MD${EXTRA_MSVC_FLAGS_Mx}" )' >> ${OFN}
-    echo '  else()' >> ${OFN}
-    echo '      if ( "${FlagDefs}" MATCHES "flagMT" OR "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "${FlagDefs}" MATCHES "flagMSC(8|9)ARM" OR "${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )' >> ${OFN}
-    echo '          set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -MT${EXTRA_MSVC_FLAGS_Mx}" )' >> ${OFN}
-    echo '      else()' >> ${OFN}
-    echo '          set ( EXTRA_MSVC_FLAGS "${EXTRA_MSVC_FLAGS} -ML${EXTRA_MSVC_FLAGS_Mx}" )' >> ${OFN}
-    echo '      endif()' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  #,5.01 needed to support WindowsXP' >> ${OFN}
-    echo '  if ( NOT "${FlagDefs}" MATCHES "(flagMSC(8|9|10|11|12|15)X64)" )' >> ${OFN}
-    echo '      set ( MSVC_LINKER_SUBSYSTEM ",5.01" )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo '  if ( "${FlagDefs}" MATCHES "flagMSC(8|9)ARM" )' >> ${OFN}
-    echo '      set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -subsystem:windowsce,4.20 /ARMPADCODE -NODEFAULTLIB:\"oldnames.lib\"" )' >> ${OFN}
-    echo '  else()' >> ${OFN}
-    echo '      if ( "${FlagDefs}" MATCHES "flagGUI" OR "${FlagDefs}" MATCHES "flagMSC(8|9)ARM" )' >> ${OFN}
-    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -subsystem:windows${MSVC_LINKER_SUBSYSTEM}" )' >> ${OFN}
-    echo '      else()' >> ${OFN}
-    echo '          set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -subsystem:console${MSVC_LINKER_SUBSYSTEM}" )' >> ${OFN}
-    echo '      endif()' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ( "${FlagDefs}" MATCHES "flagDLL" )' >> ${OFN}
-    echo '      set ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -dll" )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  set ( CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_CXX_FLAGS_${BUILD_TYPE}} ${EXTRA_MSVC_FLAGS}" )' >> ${OFN}
-    echo '  set ( CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE} "${CMAKE_C_FLAGS_${BUILD_TYPE}} ${EXTRA_MSVC_FLAGS}" )' >> ${OFN}
-    echo 'endif()' >> ${OFN}
+  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -O3" )
+  set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -GS-" )
 
-    echo >> ${OFN}
-    echo '# Function to create cpp source from icpp files' >> ${OFN}
-    echo 'function ( create_cpps_from_icpps )' >> ${OFN}
-    echo '  file ( GLOB icpp_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/*.icpp" )' >> ${OFN}
-    echo '  foreach ( icppFile ${icpp_files} )' >> ${OFN}
-    echo '      set ( output_file "${CMAKE_CURRENT_BINARY_DIR}/${icppFile}.cpp" )' >> ${OFN}
-    echo '      file ( WRITE "${output_file}" "#include \"${CMAKE_CURRENT_SOURCE_DIR}/${icppFile}\"\n" )' >> ${OFN}
-    echo '  endforeach()' >> ${OFN}
-    echo 'endfunction()' >> ${OFN}
+  if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
+      set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -ffunction-sections -fdata-sections" )
+      set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -Wl,-s,--gc-sections" )
+  endif()
 
-    echo >> ${OFN}
-    echo '# Function to create cpp source file from binary resource definition' >> ${OFN}
-    echo 'function ( create_brc_source input_file output_file symbol_name compression symbol_append )' >> ${OFN}
-    echo '  if ( NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${input_file} )' >> ${OFN}
-    echo '      message ( FATAL_ERROR "Input file does not exist: ${CMAKE_CURRENT_SOURCE_DIR}/${input_file}" )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  file ( REMOVE ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ( ${compression} MATCHES "[bB][zZ]2" )' >> ${OFN}
-    echo '      find_program ( BZIP2_EXEC bzip2 )'>> ${OFN}
-    echo '      if ( NOT BZIP2_EXEC )' >> ${OFN}
-    echo '          message ( FATAL_ERROR "BZIP2 executable not found!" )' >> ${OFN}
-    echo '      endif()' >> ${OFN}
-    echo '      set ( COMPRESS_SUFFIX "bz2" )' >> ${OFN}
-    echo '      set ( COMMAND_COMPRESS ${BZIP2_EXEC} -k -f ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
-    echo '  elseif ( ${compression} MATCHES "[zZ][iI][pP]" )' >> ${OFN}
-    echo '      find_program ( ZIP_EXEC zip )'>> ${OFN}
-    echo '      if ( NOT ZIP_EXEC )' >> ${OFN}
-    echo '          message ( FATAL_ERROR "ZIP executable not found!" )' >> ${OFN}
-    echo '      endif()' >> ${OFN}
-    echo '      set ( COMPRESS_SUFFIX "zip" )' >> ${OFN}
-    echo '      set ( COMMAND_COMPRESS ${ZIP_EXEC} ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.${COMPRESS_SUFFIX} ${symbol_name} )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  file ( COPY ${CMAKE_CURRENT_SOURCE_DIR}/${input_file} DESTINATION ${CMAKE_CURRENT_BINARY_DIR} )' >> ${OFN}
-    echo '  get_filename_component ( input_file_name ${CMAKE_CURRENT_SOURCE_DIR}/${input_file} NAME )' >> ${OFN}
-    echo '  file ( RENAME ${CMAKE_CURRENT_BINARY_DIR}/${input_file_name} ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
-    echo '  if ( COMMAND_COMPRESS )' >> ${OFN}
-    echo '      execute_process ( COMMAND ${COMMAND_COMPRESS} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} OUTPUT_VARIABLE XXXX )' >> ${OFN}
-    echo '      file ( RENAME ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.${COMPRESS_SUFFIX} ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  file ( READ ${CMAKE_CURRENT_BINARY_DIR}/${symbol_name} hex_string HEX )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  set ( CURINDEX 0 )' >> ${OFN}
-    echo '  string ( LENGTH "${hex_string}" CURLENGTH )' >> ${OFN}
-    echo '  math ( EXPR FILELENGTH "${CURLENGTH} / 2" )' >> ${OFN}
-    echo '  set ( ${hex_string} 0)' >> ${OFN}
-    echo >> ${OFN}
-    echo '  set ( output_string "static unsigned char ${symbol_name}_[] = {\n" )' >> ${OFN}
-    echo '  while ( CURINDEX LESS CURLENGTH )' >> ${OFN}
-    echo '      string ( SUBSTRING "${hex_string}" ${CURINDEX} 2 CHAR )' >> ${OFN}
-    echo '      set ( output_string "${output_string} 0x${CHAR}," )' >> ${OFN}
-    echo '      math ( EXPR CURINDEX "${CURINDEX} + 2" )' >> ${OFN}
-    echo '  endwhile()' >> ${OFN}
-    echo '  set ( output_string "${output_string} 0x00 }\;\n\n" )' >> ${OFN}
-    echo '  set ( output_string "${output_string}unsigned char *${symbol_name} = ${symbol_name}_\;\n\n" )' >> ${OFN}
-    echo '  set ( output_string "${output_string}int ${symbol_name}_length = ${FILELENGTH}\;\n\n" )' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ( ${symbol_append} MATCHES "append" )' >> ${OFN}
-    echo '      file ( APPEND ${CMAKE_CURRENT_BINARY_DIR}/${output_file} ${output_string} )' >> ${OFN}
-    echo '  else()' >> ${OFN}
-    echo '      file ( WRITE ${CMAKE_CURRENT_BINARY_DIR}/${output_file} ${output_string} )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo 'endfunction()' >> ${OFN}
+  if ( MSVC )
+      if ( "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )
+          set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -release -OPT:REF,ICF" )
+      else()
+          set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -incremental:no -release -OPT:REF,ICF" )
+      endif()
+  endif()
+endif()
+message ( STATUS "Build type: " \${CMAKE_BUILD_TYPE} )
 
-    echo >> ${OFN}
-    echo '# Import and set up required packages and libraries' >> ${OFN}
-    echo 'if ( NOT WIN32 )' >> ${OFN}
-    echo '  find_package ( Freetype )' >> ${OFN}
-    echo '  if ( FREETYPE_FOUND )' >> ${OFN}
-    echo '      include_directories ( ${FREETYPE_INCLUDE_DIRS} )' >> ${OFN}
-    echo "      list ( APPEND main_${LINK_LIST} \${FREETYPE_LIBRARIES} )" >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  find_package ( EXPAT )' >> ${OFN}
-    echo '  if ( EXPAT_FOUND )' >> ${OFN}
-    echo '      include_directories ( ${EXPAT_INCLUDE_DIRS} )' >> ${OFN}
-    echo "      list ( APPEND main_${LINK_LIST} \${EXPAT_LIBRARIES} )" >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ( NOT BUILD_WITHOUT_GTK )' >> ${OFN}
-    echo '      find_package ( GTK2 2.6 REQUIRED gtk )' >> ${OFN}
-    echo '      if ( GTK2_FOUND )' >> ${OFN}
-    echo '          include_directories ( ${GTK2_INCLUDE_DIRS} )' >> ${OFN}
-    echo "          list ( APPEND main_${LINK_LIST} \${GTK2_LIBRARIES} )" >> ${OFN}
-    echo '      endif()' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  find_package ( X11 )' >> ${OFN}
-    echo '  if ( X11_FOUND )' >> ${OFN}
-    echo '      include_directories ( ${X11_INCLUDE_DIR} )' >> ${OFN}
-    echo "      list ( APPEND main_${LINK_LIST} \${X11_LIBRARIES} )" >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  find_package ( BZip2 REQUIRED )' >> ${OFN}
-    echo '  if ( BZIP2_FOUND )' >> ${OFN}
-    echo '      include_directories ( ${BZIP_INCLUDE_DIRS} )' >> ${OFN}
-    echo "      list ( APPEND main_${LINK_LIST} \${BZIP2_LIBRARIES} )" >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo >> ${OFN}
-    echo '  if ( ${CMAKE_SYSTEM_NAME} MATCHES BSD )' >> ${OFN}
-    echo '      link_directories ( /usr/local/lib )' >> ${OFN}
-    echo '  endif()' >> ${OFN}
-    echo 'endif()' >> ${OFN}
+if ( "\${FlagDefs}" MATCHES "flagDEBUG_MINIMAL" )
+  if ( NOT MINGW )
+      set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -ggdb" )
+  endif()
+  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -g1" )
+  set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -Zd" )
+endif()
 
-    echo >> ${OFN}
-    echo '# Initialize definition flags' >> ${OFN}
-    echo 'get_directory_property ( FlagDefs COMPILE_DEFINITIONS )' >> ${OFN}
-    echo 'foreach( comp_def ${FlagDefs} )' >> ${OFN}
-    echo '  set ( ${comp_def} 1 )' >> ${OFN}
-    echo 'endforeach()' >> ${OFN}
+if ( "\${FlagDefs}" MATCHES "flagDEBUG_FULL" )
+  if ( NOT MINGW )
+      set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -ggdb" )
+  endif()
+  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -g2" )
+  set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -Zi" )
+endif()
 
-    echo >> ${OFN}
-    echo "# Set include and library directories" >> ${OFN}
-    echo "include_directories ( BEFORE \${CMAKE_CURRENT_SOURCE_DIR} )" >> ${OFN}
-    echo "include_directories ( BEFORE ${UPP_SRC_DIR} )" >> ${OFN}
+if ( "\${FlagDefs}" MATCHES "flagSHARED" )
+  set ( STATUS_SHARED "TRUE" )
+  set ( EXTRA_GXX_FLAGS "\${EXTRA_GXX_FLAGS} -fuse-cxa-atexit" )
+else()
+  set ( STATUS_SHARED "FALSE" )
+  set ( BUILD_SHARED_LIBS OFF )
+  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -static -fexceptions" )
 
-    echo >> ${OFN}
+  if ( MINGW )
+      set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -static-libgcc" )
+  endif()
+endif()
+message ( STATUS "Build with flagSHARED: \${STATUS_SHARED}" )
+
+if ( "\${FlagDefs}" MATCHES "flagMT" )
+  find_package ( Threads REQUIRED )
+  if ( THREADS_FOUND )
+      include_directories ( \${THREADS_INCLUDE_DIRS} )
+      list ( APPEND main_${LINK_LIST} \${THREADS_LIBRARIES} )
+  endif()
+endif()
+
+if ( "\${FlagDefs}" MATCHES "flagSSL" )
+  find_package ( OpenSSL REQUIRED )
+  if ( OPENSSL_FOUND )
+      include_directories ( \${OPENSSL_INCLUDE_DIRS} )
+      list ( APPEND main_${LINK_LIST} \${OPENSSL_LIBRARIES} )
+  endif()
+endif()
+
+# Set compiler options
+if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
+  set ( EXTRA_GXX_FLAGS "\${EXTRA_GXX_FLAGS} -std=c++11" )
+
+  if ( MINGW )
+      add_definitions ( -DflagWIN32 )
+      remove_definitions( -DflagPOSIX )
+      remove_definitions( -DflagLINUX )
+      remove_definitions( -DflagFREEBSD )
+      remove_definitions( -DflagSOLARIS )
+      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
+
+      set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -mwindows" )
+
+      if ( "\${FlagDefs}" MATCHES "flagDLL" )
+          set ( BUILD_SHARED_LIBS ON )
+          set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -shared" )
+          string ( REGEX REPLACE "-static " "" CMAKE_EXE_LINKER_FLAGS \${CMAKE_EXE_LINKER_FLAGS} )
+      endif()
+
+      if ("\${FlagDefs}" MATCHES "flagGUI" )
+          list ( APPEND main_${LINK_LIST} mingw32 )
+      else()
+          set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -mconsole" )
+      endif()
+
+      if ( "\${FlagDefs}" MATCHES "flagMT" )
+          set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -mthreads" )
+      endif()
+
+      # The optimalization might be broken on MinGW - remove optimalization flag (cross compile).
+      string ( REGEX REPLACE "-O3" "" EXTRA_GCC_FLAGS \${EXTRA_GCC_FLAGS} )
+
+      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
+  endif()
+
+  set ( CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE} "\${CMAKE_CXX_FLAGS_\${BUILD_TYPE}} \${EXTRA_GXX_FLAGS} \${EXTRA_GCC_FLAGS}" )
+  set ( CMAKE_C_FLAGS_\${CMAKE_BUILD_TYPE} "\${CMAKE_C_FLAGS_\${BUILD_TYPE}} \${EXTRA_GCC_FLAGS}" )
+
+  set ( CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )
+  set ( CMAKE_CXX_ARCHIVE_APPEND "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )
+  set ( CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )
+  set ( CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> -rs <TARGET> <LINK_FLAGS> <OBJECTS>" )
+
+elseif ( MSVC )
+  add_definitions ( -DflagMSC )
+  add_definitions ( -DflagWIN32 )
+  remove_definitions( -DflagPOSIX )
+  remove_definitions( -DflagLINUX )
+  remove_definitions( -DflagFREEBSD )
+  remove_definitions( -DflagSOLARIS )
+  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
+
+  set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -nologo" )
+
+  if ( "\${FlagDefs}" MATCHES "flagEVC" )
+      if ( NOT "\${FlagDefs}" MATCHES "flagSH3" AND  NOT "\${FlagDefs}" MATCHES "flagSH4" )
+          # disable stack checking
+          set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -Gs8192" )
+      endif()
+      # read-only string pooling, turn off exception handling
+      set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -GF -GX-" )
+  elseif ( "\${FlagDefs}" MATCHES "flagCLR" )
+      set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -EHac" )
+  elseif ( "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9)ARM" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )
+      set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -EHsc" )
+  else()
+      set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -GX" )
+  endif()
+
+  if ( \${CMAKE_BUILD_TYPE} STREQUAL DEBUG )
+      set ( EXTRA_MSVC_FLAGS_Mx "d" )
+  endif()
+  if ( "\${FlagDefs}" MATCHES "flagSHARED" OR "\${FlagDefs}" MATCHES "flagCLR" )
+      set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -MD\${EXTRA_MSVC_FLAGS_Mx}" )
+  else()
+      if ( "\${FlagDefs}" MATCHES "flagMT" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9)ARM" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )
+          set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -MT\${EXTRA_MSVC_FLAGS_Mx}" )
+      else()
+          set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -ML\${EXTRA_MSVC_FLAGS_Mx}" )
+      endif()
+  endif()
+
+  #,5.01 needed to support WindowsXP
+  if ( NOT "\${FlagDefs}" MATCHES "(flagMSC(8|9|10|11|12|15)X64)" )
+      set ( MSVC_LINKER_SUBSYSTEM ",5.01" )
+  endif()
+  if ( "\${FlagDefs}" MATCHES "flagMSC(8|9)ARM" )
+      set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -subsystem:windowsce,4.20 /ARMPADCODE -NODEFAULTLIB:\"oldnames.lib\"" )
+  else()
+      if ( "\${FlagDefs}" MATCHES "flagGUI" OR "\${FlagDefs}" MATCHES "flagMSC(8|9)ARM" )
+          set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -subsystem:windows\${MSVC_LINKER_SUBSYSTEM}" )
+      else()
+          set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -subsystem:console\${MSVC_LINKER_SUBSYSTEM}" )
+      endif()
+  endif()
+
+  if ( "\${FlagDefs}" MATCHES "flagDLL" )
+      set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -dll" )
+  endif()
+
+  set ( CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE} "\${CMAKE_CXX_FLAGS_\${BUILD_TYPE}} \${EXTRA_MSVC_FLAGS}" )
+  set ( CMAKE_C_FLAGS_\${CMAKE_BUILD_TYPE} "\${CMAKE_C_FLAGS_\${BUILD_TYPE}} \${EXTRA_MSVC_FLAGS}" )
+endif()
+
+# Function to create cpp source from icpp files
+function ( create_cpps_from_icpps )
+  file ( GLOB icpp_files RELATIVE "\${CMAKE_CURRENT_SOURCE_DIR}" "\${CMAKE_CURRENT_SOURCE_DIR}/*.icpp" )
+  foreach ( icppFile \${icpp_files} )
+      set ( output_file "\${CMAKE_CURRENT_BINARY_DIR}/\${icppFile}.cpp" )
+      file ( WRITE "\${output_file}" "#include \"\${CMAKE_CURRENT_SOURCE_DIR}/\${icppFile}\"\n" )
+  endforeach()
+endfunction()
+
+# Function to create cpp source file from binary resource definition
+function ( create_brc_source input_file output_file symbol_name compression symbol_append )
+  if ( NOT EXISTS \${CMAKE_CURRENT_SOURCE_DIR}/\${input_file} )
+      message ( FATAL_ERROR "Input file does not exist: \${CMAKE_CURRENT_SOURCE_DIR}/\${input_file}" )
+  endif()
+
+  file ( REMOVE \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name} )
+
+  if ( \${compression} MATCHES "[bB][zZ]2" )
+      find_program ( BZIP2_EXEC bzip2 )
+      if ( NOT BZIP2_EXEC )
+          message ( FATAL_ERROR "BZIP2 executable not found!" )
+      endif()
+      set ( COMPRESS_SUFFIX "bz2" )
+      set ( COMMAND_COMPRESS \${BZIP2_EXEC} -k -f \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name} )
+  elseif ( \${compression} MATCHES "[zZ][iI][pP]" )
+      find_program ( ZIP_EXEC zip )
+      if ( NOT ZIP_EXEC )
+          message ( FATAL_ERROR "ZIP executable not found!" )
+      endif()
+      set ( COMPRESS_SUFFIX "zip" )
+      set ( COMMAND_COMPRESS \${ZIP_EXEC} \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name}.\${COMPRESS_SUFFIX} \${symbol_name} )
+  endif()
+
+  file ( COPY \${CMAKE_CURRENT_SOURCE_DIR}/\${input_file} DESTINATION \${CMAKE_CURRENT_BINARY_DIR} )
+  get_filename_component ( input_file_name \${CMAKE_CURRENT_SOURCE_DIR}/\${input_file} NAME )
+  file ( RENAME \${CMAKE_CURRENT_BINARY_DIR}/\${input_file_name} \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name} )
+  if ( COMMAND_COMPRESS )
+      execute_process ( COMMAND \${COMMAND_COMPRESS} WORKING_DIRECTORY \${CMAKE_CURRENT_BINARY_DIR} OUTPUT_VARIABLE XXXX )
+      file ( RENAME \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name}.\${COMPRESS_SUFFIX} \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name} )
+  endif()
+
+  file ( READ \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name} hex_string HEX )
+
+  set ( CURINDEX 0 )
+  string ( LENGTH "\${hex_string}" CURLENGTH )
+  math ( EXPR FILELENGTH "\${CURLENGTH} / 2" )
+  set ( \${hex_string} 0)
+
+  set ( output_string "static unsigned char \${symbol_name}_[] = {\n" )
+  while ( CURINDEX LESS CURLENGTH )
+      string ( SUBSTRING "\${hex_string}" \${CURINDEX} 2 CHAR )
+      set ( output_string "\${output_string} 0x\${CHAR}," )
+      math ( EXPR CURINDEX "\${CURINDEX} + 2" )
+  endwhile()
+  set ( output_string "\${output_string} 0x00 }\;\n\n" )
+  set ( output_string "\${output_string}unsigned char *\${symbol_name} = \${symbol_name}_\;\n\n" )
+  set ( output_string "\${output_string}int \${symbol_name}_length = \${FILELENGTH}\;\n\n" )
+
+  if ( \${symbol_append} MATCHES "append" )
+      file ( APPEND \${CMAKE_CURRENT_BINARY_DIR}/\${output_file} \${output_string} )
+  else()
+      file ( WRITE \${CMAKE_CURRENT_BINARY_DIR}/\${output_file} \${output_string} )
+  endif()
+endfunction()
+
+# Import and set up required packages and libraries
+if ( NOT WIN32 )
+  find_package ( Freetype )
+  if ( FREETYPE_FOUND )
+      include_directories ( \${FREETYPE_INCLUDE_DIRS} )
+      list ( APPEND main_${LINK_LIST} \${FREETYPE_LIBRARIES} )
+  endif()
+
+  find_package ( EXPAT )
+  if ( EXPAT_FOUND )
+      include_directories ( \${EXPAT_INCLUDE_DIRS} )
+      list ( APPEND main_${LINK_LIST} \${EXPAT_LIBRARIES} )
+  endif()
+
+  if ( NOT BUILD_WITHOUT_GTK )
+      find_package ( GTK2 2.6 REQUIRED gtk )
+      if ( GTK2_FOUND )
+          include_directories ( \${GTK2_INCLUDE_DIRS} )
+          list ( APPEND main_${LINK_LIST} \${GTK2_LIBRARIES} )
+      endif()
+  endif()
+
+  find_package ( X11 )
+  if ( X11_FOUND )
+      include_directories ( \${X11_INCLUDE_DIR} )
+      list ( APPEND main_${LINK_LIST} \${X11_LIBRARIES} )
+  endif()
+
+  find_package ( BZip2 REQUIRED )
+  if ( BZIP2_FOUND )
+      include_directories ( \${BZIP_INCLUDE_DIRS} )
+      list ( APPEND main_${LINK_LIST} \${BZIP2_LIBRARIES} )
+  endif()
+
+  if ( \${CMAKE_SYSTEM_NAME} MATCHES BSD )
+      link_directories ( /usr/local/lib )
+  endif()
+endif()
+
+# Initialize definition flags
+get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
+foreach( comp_def \${FlagDefs} )
+  set ( \${comp_def} 1 )
+endforeach()
+
+# Set include and library directories
+include_directories ( BEFORE \${CMAKE_CURRENT_SOURCE_DIR} )
+include_directories ( BEFORE ${UPP_SRC_DIR} )
+
+EOL
+# End of the cat (CMakeFiles.txt)
+
     echo '# Include dependent directories of the project' >> ${OFN}
     while [ ${#UPP_ALL_USES_DONE[@]} -lt ${#UPP_ALL_USES[@]} ]; do
         local process_upp=$(get_upp_to_process)
@@ -1391,59 +1376,56 @@ generate_main_cmake_file()
         library_dep+="${list_library}${LIB_SUFFIX} "
     done
 
-    echo >> ${OFN}
-    echo '# Creation of the file build_info.h' >> ${OFN}
-    echo 'set ( BUILD_INFO_H ${PROJECT_BINARY_DIR}/inc/build_info.h )' >> ${OFN}
-    echo 'string ( TIMESTAMP bmYEAR %Y )'>> ${OFN}
-    echo 'string ( TIMESTAMP bmMONTH %m )'>> ${OFN}
-    echo 'string ( TIMESTAMP bmDAY %d )'>> ${OFN}
-    echo 'string ( TIMESTAMP bmHOUR %H )'>> ${OFN}
-    echo 'string ( TIMESTAMP bmMINUTE %M )'>> ${OFN}
-    echo 'string ( TIMESTAMP bmSECOND %S )'>> ${OFN}
-    echo 'string ( REGEX REPLACE "^0" "" bmMONTH ${bmMONTH} )' >> ${OFN}
-    echo 'string ( REGEX REPLACE "^0" "" bmDAY ${bmDAY} )' >> ${OFN}
-    echo 'string ( REGEX REPLACE "^0" "" bmHOUR ${bmHOUR} )' >> ${OFN}
-    echo 'string ( REGEX REPLACE "^0" "" bmMINUTE ${bmMINUTE} )' >> ${OFN}
-    echo 'string ( REGEX REPLACE "^0" "" bmSECOND ${bmSECOND} )' >> ${OFN}
-    echo 'cmake_host_system_information ( RESULT bmHOSTNAME QUERY HOSTNAME )'>> ${OFN}
-    echo 'file ( WRITE  ${BUILD_INFO_H} "#define bmYEAR ${bmYEAR}\n#define bmMONTH ${bmMONTH}\n#define bmDAY ${bmDAY}\n" )' >> ${OFN}
-    echo 'file ( APPEND ${BUILD_INFO_H} "#define bmHOUR ${bmHOUR}\n#define bmMINUTE ${bmMINUTE}\n#define bmSECOND ${bmSECOND}\n" )' >> ${OFN}
-    echo 'file ( APPEND ${BUILD_INFO_H} "#define bmTIME Time(${bmYEAR}, ${bmMONTH}, ${bmDAY}, ${bmHOUR}, ${bmMINUTE}, ${bmSECOND})\n" )' >> ${OFN}
-    echo 'file ( APPEND ${BUILD_INFO_H} "#define bmMACHINE \"${bmHOSTNAME}\"\n" )' >> ${OFN}
-    echo 'if ( WIN32 )' >> ${OFN}
-    echo '  file ( APPEND ${BUILD_INFO_H} "#define bmUSER \"$ENV{USERNAME}\"\n" )' >> ${OFN}
-    echo 'else()' >> ${OFN}
-    echo '  file ( APPEND ${BUILD_INFO_H} "#define bmUSER \"$ENV{USER}\"\n" )' >> ${OFN}
-    echo 'endif()' >> ${OFN}
+    # Begin of the cat (CMakeFiles.txt)
+    cat >> ${OFN} << EOL
 
-    echo >> ${OFN}
-    echo '# Collect icpp files' >> ${OFN}
-    echo 'file ( GLOB_RECURSE cpp_ini_files "${CMAKE_CURRENT_BINARY_DIR}/../*.icpp.cpp" )' >> ${OFN}
+# Creation of the file build_info.h
+set ( BUILD_INFO_H \${PROJECT_BINARY_DIR}/inc/build_info.h )
+string ( TIMESTAMP bmYEAR %Y )
+string ( TIMESTAMP bmMONTH %m )
+string ( TIMESTAMP bmDAY %d )
+string ( TIMESTAMP bmHOUR %H )
+string ( TIMESTAMP bmMINUTE %M )
+string ( TIMESTAMP bmSECOND %S )
+string ( REGEX REPLACE "^0" "" bmMONTH \${bmMONTH} )
+string ( REGEX REPLACE "^0" "" bmDAY \${bmDAY} )
+string ( REGEX REPLACE "^0" "" bmHOUR \${bmHOUR} )
+string ( REGEX REPLACE "^0" "" bmMINUTE \${bmMINUTE} )
+string ( REGEX REPLACE "^0" "" bmSECOND \${bmSECOND} )
+cmake_host_system_information ( RESULT bmHOSTNAME QUERY HOSTNAME )
+file ( WRITE  \${BUILD_INFO_H} "#define bmYEAR \${bmYEAR}\n#define bmMONTH \${bmMONTH}\n#define bmDAY \${bmDAY}\n" )
+file ( APPEND \${BUILD_INFO_H} "#define bmHOUR \${bmHOUR}\n#define bmMINUTE \${bmMINUTE}\n#define bmSECOND \${bmSECOND}\n" )
+file ( APPEND \${BUILD_INFO_H} "#define bmTIME Time(\${bmYEAR}, \${bmMONTH}, \${bmDAY}, \${bmHOUR}, \${bmMINUTE}, \${bmSECOND})\n" )
+file ( APPEND \${BUILD_INFO_H} "#define bmMACHINE \"\${bmHOSTNAME}\"\n" )
+if ( WIN32 )
+  file ( APPEND \${BUILD_INFO_H} "#define bmUSER \"\$ENV{USERNAME}\"\n" )
+else()
+  file ( APPEND \${BUILD_INFO_H} "#define bmUSER \"\$ENV{USER}\"\n" )
+endif()
 
-    echo >> ${OFN}
-    echo '# Collect windows resource config file' >> ${OFN}
-    echo 'if ( WIN32 )' >> ${OFN}
-    echo '  file ( GLOB rc_file "${PROJECT_BINARY_DIR}/*.rc" )' >> ${OFN}
-    echo 'endif()' >> ${OFN}
+# Collect icpp files
+file ( GLOB_RECURSE cpp_ini_files "\${CMAKE_CURRENT_BINARY_DIR}/../*.icpp.cpp" )
 
-    echo >> ${OFN}
-    echo '# Main program definition' >> ${OFN}
-    echo 'file ( WRITE ${PROJECT_BINARY_DIR}/null.cpp "" )' >> ${OFN}
-    echo "add_executable ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/null.cpp \${rc_file} \${cpp_ini_files} )" >> ${OFN}
+# Collect windows resource config file
+if ( WIN32 )
+  file ( GLOB rc_file "\${PROJECT_BINARY_DIR}/*.rc" )
+endif()
 
-    echo >> ${OFN}
-    echo "# Main program dependecies" >> ${OFN}
-    echo "add_dependencies ( ${main_target_name}${BIN_SUFFIX} ${library_dep})" >> ${OFN}
-    echo 'if ( DEFINED MAIN_TARGET_LINK_FLAGS )' >> ${OFN}
-    echo "  set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES LINK_FLAGS \${MAIN_TARGET_LINK_FLAGS} )" >> ${OFN}
-    echo 'endif()' >> ${OFN}
+# Main program definition
+file ( WRITE \${PROJECT_BINARY_DIR}/null.cpp "" )
+add_executable ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/null.cpp \${rc_file} \${cpp_ini_files} )
 
-    echo >> ${OFN}
-    echo "# Main program link" >> ${OFN}
-    echo "target_link_libraries ( ${main_target_name}${BIN_SUFFIX} \${main_$LINK_LIST} ${library_dep} )" >> ${OFN}
+# Main program dependecies
+add_dependencies ( ${main_target_name}${BIN_SUFFIX} ${library_dep})
+if ( DEFINED MAIN_TARGET_LINK_FLAGS )
+  set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES LINK_FLAGS \${MAIN_TARGET_LINK_FLAGS} )
+endif()
 
-    echo >> ${OFN}
-    echo "set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES OUTPUT_NAME ${main_target_name} )" >> ${OFN}
+# Main program link
+target_link_libraries ( ${main_target_name}${BIN_SUFFIX} \${main_$LINK_LIST} ${library_dep} )
 
+set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES OUTPUT_NAME ${main_target_name} )
+EOL
+# End of the cat (CMakeFiles.txt)
 }
 
