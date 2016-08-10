@@ -711,8 +711,14 @@ generate_cmake_from_upp()
                         continue;
                     fi
 
-                    if [ ! -f "${list}" ]; then
-                        echo "WARNING - \"${list}\" doesn't exist! It was not added to the list."
+                    if [ -d "${list}" ]; then
+                        if [ "${GENERATE_VERBOSE}" == "1" ]; then
+                            echo "WARNING - directory \"${list}\" can't be added to the list."
+                        fi
+                    elif [ ! -f "${list}" ]; then
+                        if [ "${GENERATE_VERBOSE}" == "1" ]; then
+                            echo "WARNING - file \"${list}\" doesn't exist! It was not added to the list."
+                        fi
                     else
                         if [[ ${list} =~ $RE_CPP ]]; then         # C/C++ source files
                             SOURCE+=(${list})
