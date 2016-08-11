@@ -33,6 +33,7 @@ LINK_LIST="LINK_LIST"
 DEPEND_LIST="DEPEND_LIST"
 SOURCE_LIST="SOURCE_LIST"
 HEADER_LIST="HEADER_LIST"
+INCLUDE_LIST="INCLUDE_LIST"
 SOURCE_LIST_ICPP="SOURCE_LIST_ICPP"
 SOURCE_LIST_RC="SOURCE_LIST_RC"
 
@@ -289,10 +290,69 @@ if_options_parse_all()
     echo "${output}" | sed 's#)(#) AND (#g'                   # Put 'AND' between options
 }
 
+add_require_for_lib()
+{
+    local link_list="${1}"
+    local check_lib_name="${2}"
+    local req_lib_dir="DIRS"
+    local req_lib_name=""
+    local req_lib_param=""
+    local use_pkg="0"
+
+    case "${check_lib_name}" in
+        "png")
+            req_lib_name="PNG"
+            ;;
+        "bz2")
+            req_lib_name="BZip2"
+            req_lib_dir="DIR"
+            ;;
+        "pthread")
+            req_lib_name="Threads"
+            ;;
+        "X11")
+            req_lib_name="X11"
+            req_lib_dir="DIR"
+            ;;
+        "expat")
+            req_lib_name="EXPAT"
+            ;;
+        "freetype")
+            req_lib_name="Freetype"
+            ;;
+        "ssl")
+            req_lib_name="OpenSSL"
+            ;;
+        "gtk-x11-2.0")
+            req_lib_name="GTK2"
+            req_lib_param="gtk"
+            ;;
+        "gtk-3.0")
+            req_lib_name="GTK3"
+            req_lib_param="gtk+-3.0"
+            use_pkg="1"
+            ;;
+    esac
+
+    if [ -n "${req_lib_name}" ]; then
+        if [ "${use_pkg}" == "0" ]; then
+            echo "  find_package ( ${req_lib_name} REQUIRED ${req_lib_param})" >> ${OFN}
+        else
+            echo "  find_package ( PkgConfig REQUIRED )" >> ${OFN}
+            echo "  pkg_check_modules ( ${req_lib_name} REQUIRED ${req_lib_param})" >> ${OFN}
+        fi
+        echo "  if ( ${req_lib_name^^}_FOUND )" >> ${OFN}
+        echo "      list ( APPEND ${INCLUDE_LIST} \${${req_lib_name^^}_INCLUDE_${req_lib_dir}} )" >> ${OFN}
+        echo "      list ( APPEND ${link_list} \${${req_lib_name^^}_LIBRARIES} )" >> ${OFN}
+        echo "  endif()" >> ${OFN}
+    fi
+}
+
 list_parse()
 {
     local line="${1}"
     local list="${2}"
+    local target_name="${3}"
     local options=""
     local parameters=""
 
@@ -320,7 +380,13 @@ list_parse()
 
     if [ -n "${options}" ] ; then
         echo "if (${options})" >> ${OFN}
-        echo "      list ( APPEND ${list} ${parameters} )" >> ${OFN}
+        if [ -n "${target_name}" ]; then
+            local -a check_library_array=(${parameters})
+            for check_library in "${check_library_array[@]}"; do
+                add_require_for_lib "${list}" "${check_library}"
+            done
+        fi
+        echo "  list ( APPEND ${list} ${parameters} )" >> ${OFN}
         echo "endif()" >> ${OFN}
     fi
 }
@@ -344,7 +410,7 @@ link_parse()
 
     if [ -n "${options}" ]; then
         echo "if (${options})" >> ${OFN}
-        echo "  SET ( MAIN_TARGET_LINK_FLAGS "\${MAIN_TARGET_LINK_FLAGS} ${parameters}" PARENT_SCOPE )" >> ${OFN}
+        echo "  set ( MAIN_TARGET_LINK_FLAGS "\${MAIN_TARGET_LINK_FLAGS} ${parameters}" PARENT_SCOPE )" >> ${OFN}
         echo "endif()" >> ${OFN}
     fi
 }
@@ -633,7 +699,7 @@ generate_cmake_from_upp()
 
             # Parse library options
             if [[ ${line} =~ $RE_LIBRARY ]]; then
-                list_parse "${line}" ${LINK_LIST}
+                list_parse "${line}" ${LINK_LIST} "${target_name}"
             fi
 
             # Begin of the options section
@@ -856,6 +922,7 @@ generate_cmake_from_upp()
         echo "create_cpps_from_icpps()" >> ${OFN}
         echo "set_source_files_properties ( \${$HEADER_LIST} PROPERTIES HEADER_FILE_ONLY ON )" >> ${OFN}
         echo "add_library ( ${target_name}${LIB_SUFFIX} \${INIT_FILE} \${$SOURCE_LIST} )" >> ${OFN}
+        echo "target_include_directories ( ${target_name}${LIB_SUFFIX} PUBLIC \${$INCLUDE_LIST} )" >> ${OFN}
 
         echo >> ${OFN}
         echo "# Module dependecies" >> ${OFN}
@@ -1053,6 +1120,11 @@ endif()
 if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
   set ( CMAKE_COMPILER_IS_CLANG TRUE )
   set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -Wno-logical-op-parentheses" )
+endif()
+
+# Set link directories on BSD systems
+if ( \${CMAKE_SYSTEM_NAME} MATCHES BSD )
+    link_directories ( /usr/local/lib )
 endif()
 
 # Parse definition flags
@@ -1314,45 +1386,6 @@ function ( create_brc_source input_file output_file symbol_name compression symb
   endif()
 endfunction()
 
-# Import and set up required packages and libraries
-if ( NOT WIN32 )
-  find_package ( Freetype )
-  if ( FREETYPE_FOUND )
-      include_directories ( \${FREETYPE_INCLUDE_DIRS} )
-      list ( APPEND main_${LINK_LIST} \${FREETYPE_LIBRARIES} )
-  endif()
-
-  find_package ( EXPAT )
-  if ( EXPAT_FOUND )
-      include_directories ( \${EXPAT_INCLUDE_DIRS} )
-      list ( APPEND main_${LINK_LIST} \${EXPAT_LIBRARIES} )
-  endif()
-
-  if ( NOT BUILD_WITHOUT_GTK )
-      find_package ( GTK2 2.6 REQUIRED gtk )
-      if ( GTK2_FOUND )
-          include_directories ( \${GTK2_INCLUDE_DIRS} )
-          list ( APPEND main_${LINK_LIST} \${GTK2_LIBRARIES} )
-      endif()
-  endif()
-
-  find_package ( X11 )
-  if ( X11_FOUND )
-      include_directories ( \${X11_INCLUDE_DIR} )
-      list ( APPEND main_${LINK_LIST} \${X11_LIBRARIES} )
-  endif()
-
-  find_package ( BZip2 REQUIRED )
-  if ( BZIP2_FOUND )
-      include_directories ( \${BZIP_INCLUDE_DIRS} )
-      list ( APPEND main_${LINK_LIST} \${BZIP2_LIBRARIES} )
-  endif()
-
-  if ( \${CMAKE_SYSTEM_NAME} MATCHES BSD )
-      link_directories ( /usr/local/lib )
-  endif()
-endif()
-
 # Initialize definition flags
 get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 foreach( comp_def \${FlagDefs} )
@@ -1369,7 +1402,6 @@ EOL
     echo '# Include dependent directories of the project' >> ${OFN}
     while [ ${#UPP_ALL_USES_DONE[@]} -lt ${#UPP_ALL_USES[@]} ]; do
         local process_upp=$(get_upp_to_process)
-        local png_lib_added=""
 #        echo "num of elements all : ${#UPP_ALL_USES[@]}"
 #        echo "num of elements done: ${#UPP_ALL_USES_DONE[@]}"
 #        echo "process_upp=\"${process_upp}\""
@@ -1382,19 +1414,6 @@ EOL
                 generate_cmake_file ${UPP_SRC_DIR}/${process_upp}/${process_upp}.upp "${process_upp}"
             fi
             echo "add_subdirectory ( ${UPP_SRC_DIR}/${process_upp} )" >> ${OFN}
-            if [ -z "${png_lib_added}" ] && [[ "${process_upp}" =~ $RE_PNG ]]; then
-                png_lib_added="done"
-                echo >> ${OFN}
-                echo '# Add PNG library' >> ${OFN}
-                echo 'if ( NOT "${FlagDefs}" MATCHES "flagWIN32" )' >> ${OFN}
-                echo '  find_package ( PNG REQUIRED )' >> ${OFN}
-                echo '  if ( PNG_FOUND )' >> ${OFN}
-                echo '      include_directories( ${PNG_INCLUDE_DIR} )' >> ${OFN}
-                echo "      list ( APPEND main_${LINK_LIST} \${PNG_LIBRARIES} )" >> ${OFN}
-                echo '  endif()' >> ${OFN}
-                echo 'endif()' >> ${OFN}
-                echo >> ${OFN}
-            fi
         fi
 
         UPP_ALL_USES_DONE+=("${process_upp}")
