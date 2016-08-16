@@ -219,7 +219,7 @@ if_options_parse()
     local list=""
     local OPTIONS=(${1})
 
-    if [ -n ${OPTIONS} ]; then
+    if [ -n "${OPTIONS}" ]; then
         for list in "${OPTIONS[@]}"; do
 
             # Don't process alone '!' operand
@@ -524,7 +524,7 @@ binary_resource_parse()
 
                     local -a binary_mask_files="($(eval echo "${symbol_file_name}"))"
 
-                    if [ -n ${binary_mask_files} ]; then
+                    if [ -n "${binary_mask_files}" ]; then
                         local all_count=0
                         local binary_file=""
                         local -a all_array_files
@@ -1005,7 +1005,7 @@ get_upp_to_process()
         fi
     done
 
-    if [ -n ${upp_all_only} ]; then
+    if [ -n "${upp_all_only}" ]; then
         echo "${upp_all_only[0]}"
     fi
 
@@ -1013,28 +1013,32 @@ get_upp_to_process()
 
 generate_package_file()
 {
-    echo -n "Creating archive "
+    if [ -z "${PROJECT_NAME}" ]; then
+        echo "ERROR - Variable \$PROJECT_NAME is not defined! Can't create archive package!"
+    else
+        echo -n "Creating archive "
 
-    declare -A sorted_UPP_ALL_USES_DONE=$(printf "%s\n" "${UPP_ALL_USES_DONE[@]}" | sort -u);
+        local -a sorted_UPP_ALL_USES_DONE=$(printf "%s\n" "${UPP_ALL_USES_DONE[@]}" | sort -u);
 
-    package_src_name_archive=$(basename ${PROJECT_NAME}).tar.bz2
-    package_src_name_archive_list="package_archive_list.txt"
+        local package_src_name_archive=$(basename ${PROJECT_NAME}).tar.bz2
+        local package_src_name_archive_list="package_archive_list.txt"
 
-    echo "CMakeLists.txt" > ${package_src_name_archive_list}
+        echo "CMakeLists.txt" > ${package_src_name_archive_list}
 
-    find $(dirname ${PROJECT_NAME}) -name '*' -type f >> ${package_src_name_archive_list}
+        find $(dirname ${PROJECT_NAME}) -name '*' -type f >> ${package_src_name_archive_list}
 
-    echo "${UPP_SRC_DIR}/uppconfig.h" >> ${package_src_name_archive_list}
-    echo "${UPP_SRC_DIR}/guiplatform.h" >> ${package_src_name_archive_list}
+        echo "${UPP_SRC_DIR}/uppconfig.h" >> ${package_src_name_archive_list}
+        echo "${UPP_SRC_DIR}/guiplatform.h" >> ${package_src_name_archive_list}
 
-    for pkg_name in ${sorted_UPP_ALL_USES_DONE[@]}; do
-        find ${UPP_SRC_DIR}/${pkg_name} -name '*' -type f >> ${package_src_name_archive_list}
-    done
+        for pkg_name in ${sorted_UPP_ALL_USES_DONE[@]}; do
+            find ${UPP_SRC_DIR}/${pkg_name} -name '*' -type f >> ${package_src_name_archive_list}
+        done
 
-    tar -c -j -f ${package_src_name_archive} -T ${package_src_name_archive_list}
-    rm ${package_src_name_archive_list}
+        tar -c -j -f ${package_src_name_archive} -T ${package_src_name_archive_list}
+        rm ${package_src_name_archive_list}
 
-    echo "... DONE"
+        echo "... DONE"
+    fi
 }
 
 generate_main_cmake_file()
