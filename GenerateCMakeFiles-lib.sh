@@ -921,7 +921,7 @@ generate_cmake_from_upp()
         echo "# Module properties" >> ${OFN}
         echo "create_cpps_from_icpps()" >> ${OFN}
         echo "set_source_files_properties ( \${$HEADER_LIST} PROPERTIES HEADER_FILE_ONLY ON )" >> ${OFN}
-        echo "add_library ( ${target_name}${LIB_SUFFIX} \${INIT_FILE} \${$SOURCE_LIST} )" >> ${OFN}
+        echo "add_library ( ${target_name}${LIB_SUFFIX} \${LIB_TYPE} \${$SOURCE_LIST} )" >> ${OFN}
         echo "target_include_directories ( ${target_name}${LIB_SUFFIX} PUBLIC \${$INCLUDE_LIST} )" >> ${OFN}
 
         echo >> ${OFN}
@@ -1192,6 +1192,7 @@ endif()
 
 if ( "\${FlagDefs}" MATCHES "flagSO" )
   set ( BUILD_SHARED_LIBS ON )
+  set ( LIB_TYPE SHARED )
   if ( NOT "\${FlagDefs}" MATCHES "(flagSHARED)[;$]" )
       add_definitions ( -DflagSHARED )
       get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
@@ -1204,6 +1205,7 @@ if ( "\${FlagDefs}" MATCHES "flagSHARED" )
 else()
   set ( STATUS_SHARED "FALSE" )
   set ( BUILD_SHARED_LIBS OFF )
+  set ( LIB_TYPE STATIC )
   set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -static -fexceptions" )
 
   if ( MINGW )
