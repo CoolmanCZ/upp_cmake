@@ -663,7 +663,6 @@ endif()
 # Set the default path for built libraries to the lib directory
 set ( LIBRARY_OUTPUT_PATH \${PROJECT_BINARY_DIR}/lib )
 include_directories ( BEFORE \${PROJECT_BINARY_DIR}/inc )
-
 EOL
 }
 
@@ -900,7 +899,7 @@ generate_cmake_from_upp()
                     while read line_rc; do
                         if [[ ${line_rc} =~ ICON ]]; then
                             line_rc_params=(${line_rc})
-                            echo "file ( COPY ${list} DESTINATION \${PROJECT_BINARY_DIR} )" >> ${OFN}
+                            echo "file ( COPY \"${list}\" DESTINATION \${PROJECT_BINARY_DIR} )" >> ${OFN}
                             echo "file ( COPY ${line_rc_params[3]} DESTINATION \${PROJECT_BINARY_DIR} )" >> ${OFN}
                             break
                         fi
@@ -1080,7 +1079,42 @@ add_definitions ( ${main_definitions} )
 # Read compiler definitions - used to set appropriate modules
 get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 
-# Check supported compilation arch environment
+# Platform flags settings
+if ( WIN32 )
+  remove_definitions( -DflagPOSIX )
+  remove_definitions( -DflagLINUX )
+  remove_definitions( -DflagFREEBSD )
+  remove_definitions( -DflagSOLARIS )
+
+  if ( NOT "\${FlagDefs}" MATCHES "flagWIN32" )
+    add_definitions ( -DflagWIN32 )
+  endif()
+
+else()
+  remove_definitions( -DflagWIN32 )
+
+  if ( NOT "\${FlagDefs}" MATCHES "POSIX" )
+    add_definitions ( -DflagPOSIX )
+  endif()
+
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND NOT "\${FlagDefs}" MATCHES "flagLINUX" )
+    add_definitions( -DflagLINUX )
+  endif()
+
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" AND NOT "\${FlagDefs}" MATCHES "flagFREEBSD" )
+    add_definitions( -DflagFREEBSD )
+  endif()
+
+endif()
+get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
+
+# Set GCC builder flag
+if ( CMAKE_COMPILER_IS_GNUCC AND NOT "\${FlagDefs}" MATCHES "flagGCC[;$]" )
+  add_definitions( -DflagGCC )
+  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
+endif()
+
+# Check supported compilation architecture environment
 if ( "\${FlagDefs}" MATCHES "flagGCC32" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )
   set ( STATUS_COMPILATION "32" )
   set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -m32" )
@@ -1091,32 +1125,49 @@ else()
 endif()
 message ( STATUS "Build compilation: \${STATUS_COMPILATION} bits" )
 
-# Set MSVC compiler flags
+# Set MSVC builder flags
 if ( MSVC )
+  add_definitions ( -DflagMSC )
   if ( \${MSVC_VERSION} EQUAL 1200 )
       add_definitions ( -DflagMSC6\${MSVC_ARCH} )
+      add_definitions ( -DflagMSC6 )
   endif()
   if ( \${MSVC_VERSION} EQUAL 1300 OR \${MSVC_VERSION} EQUAL 1310)
       add_definitions ( -DflagMSC7\${MSVC_ARCH} )
+      add_definitions ( -DflagMSC7 )
+      add_definitions ( -DflagMSC71\${MSVC_ARCH} )
+      add_definitions ( -DflagMSC71 )
   endif()
   if ( \${MSVC_VERSION} EQUAL 1400 )
       add_definitions ( -DflagMSC8\${MSVC_ARCH} )
+      add_definitions ( -DflagMSC8 )
   endif()
   if ( \${MSVC_VERSION} EQUAL 1500 )
       add_definitions ( -DflagMSC9\${MSVC_ARCH} )
+      add_definitions ( -DflagMSC9 )
   endif()
   if ( \${MSVC_VERSION} EQUAL 1600 )
       add_definitions ( -DflagMSC10\${MSVC_ARCH} )
+      add_definitions ( -DflagMSC10 )
   endif()
   if ( \${MSVC_VERSION} EQUAL 1700 )
       add_definitions ( -DflagMSC11\${MSVC_ARCH} )
+      add_definitions ( -DflagMSC11 )
   endif()
   if ( \${MSVC_VERSION} EQUAL 1800 )
       add_definitions ( -DflagMSC12\${MSVC_ARCH} )
+      add_definitions ( -DflagMSC12 )
   endif()
   if ( \${MSVC_VERSION} EQUAL 1900 )
       add_definitions ( -DflagMSC14\${MSVC_ARCH} )
+      add_definitions ( -DflagMSC14 )
   endif()
+  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
+endif()
+
+# Set Intel builder flag
+if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel" AND NOT "\${FlagDefs}" MATCHES "flagINTEL" )
+  add_definitions( -DflagINTEL )
   get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 endif()
 
@@ -1131,7 +1182,7 @@ if ( \${CMAKE_SYSTEM_NAME} MATCHES BSD )
     link_directories ( /usr/local/lib )
 endif()
 
-# Parse definition flags
+# Set debug/release compiler options
 if ( "\${FlagDefs}" MATCHES "flagDEBUG" )
   set ( CMAKE_VERBOSE_MAKEFILE 1 )
   set ( CMAKE_BUILD_TYPE DEBUG )
@@ -1151,6 +1202,7 @@ if ( "\${FlagDefs}" MATCHES "flagDEBUG" )
           set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -incremental:yes -debug -OPT:NOREF" )
       endif()
   endif()
+
 else()
   set ( CMAKE_VERBOSE_MAKEFILE 0 )
   set ( CMAKE_BUILD_TYPE RELEASE )
@@ -1171,6 +1223,7 @@ else()
           set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -incremental:no -release -OPT:REF,ICF" )
       endif()
   endif()
+
 endif()
 message ( STATUS "Build type: " \${CMAKE_BUILD_TYPE} )
 
@@ -1190,6 +1243,7 @@ if ( "\${FlagDefs}" MATCHES "flagDEBUG_FULL" )
   set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -Zi" )
 endif()
 
+# Set static/shared compiler options
 if ( "\${FlagDefs}" MATCHES "flagSO" )
   set ( BUILD_SHARED_LIBS ON )
   set ( LIB_TYPE SHARED )
@@ -1211,9 +1265,11 @@ else()
   if ( MINGW )
       set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -static-libgcc" )
   endif()
+
 endif()
 message ( STATUS "Build with flagSHARED: \${STATUS_SHARED}" )
 
+# Main configuration flags (MT, GUI, DLL)
 if ( "\${FlagDefs}" MATCHES "flagMT" )
   find_package ( Threads REQUIRED )
   if ( THREADS_FOUND )
@@ -1222,24 +1278,11 @@ if ( "\${FlagDefs}" MATCHES "flagMT" )
   endif()
 endif()
 
-if ( "\${FlagDefs}" MATCHES "flagSSL" )
-  find_package ( OpenSSL REQUIRED )
-  if ( OPENSSL_FOUND )
-      include_directories ( \${OPENSSL_INCLUDE_DIRS} )
-      list ( APPEND main_${LINK_LIST} \${OPENSSL_LIBRARIES} )
-  endif()
-endif()
-
 # Set compiler options
 if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
   set ( EXTRA_GXX_FLAGS "\${EXTRA_GXX_FLAGS} -std=c++11" )
 
   if ( MINGW )
-      add_definitions ( -DflagWIN32 )
-      remove_definitions( -DflagPOSIX )
-      remove_definitions( -DflagLINUX )
-      remove_definitions( -DflagFREEBSD )
-      remove_definitions( -DflagSOLARIS )
       get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 
       set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -mwindows" )
@@ -1275,12 +1318,6 @@ if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
   set ( CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> rs <TARGET> <LINK_FLAGS> <OBJECTS>" )
 
 elseif ( MSVC )
-  add_definitions ( -DflagMSC )
-  add_definitions ( -DflagWIN32 )
-  remove_definitions( -DflagPOSIX )
-  remove_definitions( -DflagLINUX )
-  remove_definitions( -DflagFREEBSD )
-  remove_definitions( -DflagSOLARIS )
   get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 
   set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -nologo" )
@@ -1378,20 +1415,20 @@ function ( create_brc_source input_file output_file symbol_name compression symb
 
   file ( READ \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name} hex_string HEX )
 
-  set ( CURINDEX 0 )
-  string ( LENGTH "\${hex_string}" CURLENGTH )
-  math ( EXPR FILELENGTH "\${CURLENGTH} / 2" )
+  set ( CUR_INDEX 0 )
+  string ( LENGTH "\${hex_string}" CUR_LENGTH )
+  math ( EXPR FILE_LENGTH "\${CUR_LENGTH} / 2" )
   set ( \${hex_string} 0)
 
   set ( output_string "static unsigned char \${symbol_name}_[] = {\n" )
-  while ( CURINDEX LESS CURLENGTH )
-      string ( SUBSTRING "\${hex_string}" \${CURINDEX} 2 CHAR )
+  while ( CUR_INDEX LESS CUR_LENGTH )
+      string ( SUBSTRING "\${hex_string}" \${CUR_INDEX} 2 CHAR )
       set ( output_string "\${output_string} 0x\${CHAR}," )
-      math ( EXPR CURINDEX "\${CURINDEX} + 2" )
+      math ( EXPR CUR_INDEX "\${CUR_INDEX} + 2" )
   endwhile()
   set ( output_string "\${output_string} 0x00 }\;\n\n" )
   set ( output_string "\${output_string}unsigned char *\${symbol_name} = \${symbol_name}_\;\n\n" )
-  set ( output_string "\${output_string}int \${symbol_name}_length = \${FILELENGTH}\;\n\n" )
+  set ( output_string "\${output_string}int \${symbol_name}_length = \${FILE_LENGTH}\;\n\n" )
 
   if ( \${symbol_append} MATCHES "append" )
       file ( APPEND \${CMAKE_CURRENT_BINARY_DIR}/\${output_file} \${output_string} )
