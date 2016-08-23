@@ -30,4 +30,61 @@ generate_main_cmake_file <${PROJECT_NAME}> [${PROJECT_FLAGS}]
 - Some options are not taken into account when generating CMakeLists
 
 ## TODO
-- Support to build shared libraries as target (DLL, SO)
+- Support to build shared libraries as the target (DLL, SO)
+- Support of the pre-compiled headers (PCH)
+
+## Flags
+Build and configuration flags, that are taken into account by the GenerateCMakeFiles-lib.sh script.
+- yes - the flag changes / specifies the behavior of the script
+- set - the flag is set by the script, if it is not defined
+- 'empty' - the flag is not used / set by the script
+
+### Main configuration flags
+Flag | Supported | Description
+---  | ---       | ---
+MT  | yes | Build multi-threaded application.
+GUI |     | Build GUI application.
+DLL |     | Target is .dll/.so.
+
+### Output method flags
+Flag | Supported | Description
+---  | ---       | ---
+DEBUG         | yes | Target is to be linked with debug version of libraries.
+DEBUG_MINIMAL | yes | Minimal debug information - depends on actual builder, usually it should provide line numbers information to debugger.
+DEBUG_FULL    | yes | Full debug info.
+SHARED        | yes | Prefer dynamic libraries when linking.
+SO            | yes | Link non-main packages as shared libraries (.dll/.so). Implies SHARED.
+BLITZ         |     | Use blitz build.
+
+### Platform flags
+Flag | Supported | Description
+---  | ---       | ---
+WIN32   | set | Win32.
+POSIX   | set | Anything else then WIN32.
+LINUX   | set | Linux.
+FREEBSD | set | FreeBSD.
+SOLARIS |     | Solaris.
+
+### Flags determining the builder (supplied by builder method)
+Flag | Supported | Description
+---  | ---       | ---
+MSC71    | set | Microsoft Visual C++ 7.1
+MSC8     | set | Microsoft Visual C++ 8.0
+GCC      | set | GCC compiler in implicit mode (32 or 64).
+GCC32    | yes | GCC compiler in 32-bit mode.
+EVC_ARM  |     | Microsoft WinCE C++ ARM complier.
+EVC_MIPS |     | Microsoft WinCE C++ MIPS complier.
+EVC_SH3  |     | Microsoft WinCE C++ SH3 complier.
+EVC_SH4  |     | Microsoft WinCE C++ SH4 complier.
+INTEL    | set | Intel C++.
+
+### Other flags (to be supplied by user)
+Flag | Supported | Description
+---  | ---       | ---
+X11          |     | On POSIX systems turns on X11 backend.
+NOGTK        |     | On POSIX systems turns on X11 backend and prevents linking against GTK libraries.
+NONAMESPACE  |     | Create all U++ classes in global namespace instead of Upp::.
+USEMALLOC    |     | Use malloc to allocate memory instead of U++ allocator.
+NOAPPSQL     |     | Do not create global SQL/SQLR instances.
+NOMYSQL      |     | Disable MySql package.
+NOPOSTGRESQL |     | Disable PostgreSQL package.
