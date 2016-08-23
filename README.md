@@ -24,13 +24,13 @@ generate_main_cmake_file <${PROJECT_NAME}> [${PROJECT_FLAGS}]
 - Generated CMakeLists.txt files can be used to create a MS Visual C++ project
 - Generated CMakeLists.txt files are generated only for dependent modules of the processed Ultimate++ project
 - Create a distribution package
+- Support to build shared libraries as the target (DLL, SO)
 
 ## Limitation
 - Ultimate++ source tree and directory of the project should be in the same directory as the generator scripts during build (you can use symlinks)
 - Some options are not taken into account when generating CMakeLists
 
 ## TODO
-- Support to build shared libraries as the target (DLL, SO)
 - Support of the pre-compiled headers (PCH)
 
 ## Flags
@@ -44,7 +44,7 @@ Flag | Supported | Description
 ---  | ---       | ---
 MT  | yes | Build multi-threaded application.
 GUI |     | Build GUI application.
-DLL |     | Target is .dll/.so.
+DLL | yes | Target is .dll/.so.
 
 ### Output method flags
 Flag | Supported | Description

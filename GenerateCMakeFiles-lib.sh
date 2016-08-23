@@ -1090,6 +1090,10 @@ if ( WIN32 )
     add_definitions ( -DflagWIN32 )
   endif()
 
+  if ( "\${FlagDefs}" MATCHES "flagDLL" )
+    set ( TARGET_EXT ".dll" )
+  endif()
+
 else()
   remove_definitions( -DflagWIN32 )
 
@@ -1103,6 +1107,10 @@ else()
 
   if ( \${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" AND NOT "\${FlagDefs}" MATCHES "flagFREEBSD" )
     add_definitions( -DflagFREEBSD )
+  endif()
+
+  if ( "\${FlagDefs}" MATCHES "flagDLL" )
+    set ( TARGET_EXT ".so" )
   endif()
 
 endif()
@@ -1526,7 +1534,7 @@ endif()
 # Main program link
 target_link_libraries ( ${main_target_name}${BIN_SUFFIX} \${main_$LINK_LIST} ${library_dep} )
 
-set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES OUTPUT_NAME ${main_target_name} )
+set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES OUTPUT_NAME ${main_target_name}\${TARGET_EXT} )
 EOL
 # End of the cat (CMakeFiles.txt)
 
