@@ -771,7 +771,7 @@ generate_cmake_from_upp()
                 fi
 
                 # Split lines with charset, options, ...
-                if [ ${files_start} -gt 0 ] && [[ "${line}" =~ $RE_FILE_SPLIT ]]; then
+                if [[ "${line}" =~ $RE_FILE_SPLIT ]]; then
                     line="${line// */}"
                 fi
 
@@ -1499,11 +1499,11 @@ string ( TIMESTAMP bmDAY %d )
 string ( TIMESTAMP bmHOUR %H )
 string ( TIMESTAMP bmMINUTE %M )
 string ( TIMESTAMP bmSECOND %S )
-string ( REGEX REPLACE "^0" "" bmMONTH \${bmMONTH} )
-string ( REGEX REPLACE "^0" "" bmDAY \${bmDAY} )
-string ( REGEX REPLACE "^0" "" bmHOUR \${bmHOUR} )
-string ( REGEX REPLACE "^0" "" bmMINUTE \${bmMINUTE} )
-string ( REGEX REPLACE "^0" "" bmSECOND \${bmSECOND} )
+string ( REGEX REPLACE "^0(.*)" \\\\1 bmMONTH \${bmMONTH} )
+string ( REGEX REPLACE "^0(.*)" \\\\1 bmDAY \${bmDAY} )
+string ( REGEX REPLACE "^0(.*)" \\\\1 bmHOUR \${bmHOUR} )
+string ( REGEX REPLACE "^0(.*)" \\\\1 bmMINUTE \${bmMINUTE} )
+string ( REGEX REPLACE "^0(.*)" \\\\1 bmSECOND \${bmSECOND} )
 cmake_host_system_information ( RESULT bmHOSTNAME QUERY HOSTNAME )
 file ( WRITE  \${BUILD_INFO_H} "#define bmYEAR \${bmYEAR}\n#define bmMONTH \${bmMONTH}\n#define bmDAY \${bmDAY}\n" )
 file ( APPEND \${BUILD_INFO_H} "#define bmHOUR \${bmHOUR}\n#define bmMINUTE \${bmMINUTE}\n#define bmSECOND \${bmSECOND}\n" )
