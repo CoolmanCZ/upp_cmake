@@ -58,6 +58,7 @@ RE_SEPARATOR='separator'
 RE_FILE_DOT='\.'
 RE_FILE_SPLIT='(options|charset|optimize_speed|highlight)'
 RE_FILE_EXCLUDE='(depends\(\))'
+RE_FILE_PCH='(PCH)'
 
 FLAG_GUI=""
 FLAG_MT=""
@@ -447,7 +448,7 @@ options_parse()
     echo >> ${OFN}
     echo "#${1}" >> ${OFN}
 
-    if [[ ${line} =~ BUILDER_OPTION ]]; then
+    if [[ "${line}" =~ BUILDER_OPTION ]]; then
         $(if_options_builder "${line}")
     else
         options=$(string_get_in_parenthesis "${line}")
@@ -760,13 +761,20 @@ generate_cmake_from_upp()
                 continue;
             fi
 
-            # Split lines with charset, options, ...
-            if [ ${files_start} -gt 0 ] && [[ "${line}" =~ $RE_FILE_SPLIT ]]; then
-                line="${line// */}"
-            fi
-
             # Parse file names
             if [ ${files_start} -gt 0 ]; then
+                # Find precompiled header option
+                if [[ "${line}" =~ $RE_FILE_PCH ]] && [[ "${line}" =~ BUILDER_OPTION ]]; then
+                    echo >> ${OFN}
+                    echo '# Precompiled headers file' >> ${OFN}
+                    echo "set ( PCH_FILE ${line// */} )" >> ${OFN}
+                fi
+
+                # Split lines with charset, options, ...
+                if [ ${files_start} -gt 0 ] && [[ "${line}" =~ $RE_FILE_SPLIT ]]; then
+                    line="${line// */}"
+                fi
+
                 line_array=(${line})
                 for list in "${line_array[@]}"; do
                     list=${list//,}
