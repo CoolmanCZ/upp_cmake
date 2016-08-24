@@ -1,7 +1,7 @@
 # Ultimate++ CMakeLists generator
 
-GenerateCMakeFiles-lib.sh is the bash script for generating CMakeLists.txt files of the Ultimate++ projects.
-This script was created based on discussion on the Ultimate++ forum - [CMake support](http://www.ultimatepp.org/forums/index.php?t=msg&th=6013&goto=32310&#msg_32310)
+GenerateCMakeFiles-lib.sh is the bash script for generating CMakeLists.txt files of the [Ultimate++](http://www.ultimatepp.org/) projects.
+This script was created based on discussion [CMake support](http://www.ultimatepp.org/forums/index.php?t=msg&th=6013&goto=32310&#msg_32310) on the [Ultimate++ forum](http://www.ultimatepp.org/forums).
 
 ## Using
 Using of the script is demonstrated in the example.sh, where you should change the variables:
