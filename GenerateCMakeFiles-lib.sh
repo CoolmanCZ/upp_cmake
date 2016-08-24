@@ -1070,6 +1070,7 @@ generate_main_cmake_file()
 
     # Begin of the cat (CMakeFiles.txt)
     cat >> ${OFN} << EOL
+
 # Set the default path for built executables to the bin directory
 set ( EXECUTABLE_OUTPUT_PATH \${PROJECT_BINARY_DIR}/bin )
 
@@ -1118,6 +1119,7 @@ get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 
 # Set GCC builder flag
 if ( CMAKE_COMPILER_IS_GNUCC AND NOT "\${FlagDefs}" MATCHES "flagGCC[;$]" )
+  remove_definitions ( -DflagMSC )
   add_definitions( -DflagGCC )
   get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 endif()
@@ -1135,6 +1137,7 @@ message ( STATUS "Build compilation: \${STATUS_COMPILATION} bits" )
 
 # Set MSVC builder flags
 if ( MSVC )
+  remove_definitions( -DflagGCC )
   add_definitions ( -DflagMSC )
   if ( \${MSVC_VERSION} EQUAL 1200 )
       add_definitions ( -DflagMSC6\${MSVC_ARCH} )
@@ -1195,7 +1198,7 @@ if ( "\${FlagDefs}" MATCHES "flagDEBUG" )
   endif()
 
   if ( MSVC )
-      if ( "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )
+      if ( "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14)X64" )
           set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -debug -OPT:NOREF" )
       else()
           set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -incremental:yes -debug -OPT:NOREF" )
@@ -1216,7 +1219,7 @@ else()
   endif()
 
   if ( MSVC )
-      if ( "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )
+      if ( "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14)X64" )
           set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -release -OPT:REF,ICF" )
       else()
           set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -incremental:no -release -OPT:REF,ICF" )
@@ -1330,7 +1333,7 @@ elseif ( MSVC )
       set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -GF -GX-" )
   elseif ( "\${FlagDefs}" MATCHES "flagCLR" )
       set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -EHac" )
-  elseif ( "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9)ARM" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )
+  elseif ( "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9)ARM" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14)X64" )
       set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -EHsc" )
   else()
       set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -GX" )
@@ -1342,7 +1345,7 @@ elseif ( MSVC )
   if ( "\${FlagDefs}" MATCHES "flagSHARED" OR "\${FlagDefs}" MATCHES "flagCLR" )
       set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -MD\${EXTRA_MSVC_FLAGS_Mx}" )
   else()
-      if ( "\${FlagDefs}" MATCHES "flagMT" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9)ARM" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|15)X64" )
+      if ( "\${FlagDefs}" MATCHES "flagMT" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9)ARM" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14)X64" )
           set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -MT\${EXTRA_MSVC_FLAGS_Mx}" )
       else()
           set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -ML\${EXTRA_MSVC_FLAGS_Mx}" )
@@ -1350,7 +1353,7 @@ elseif ( MSVC )
   endif()
 
   #,5.01 needed to support WindowsXP
-  if ( NOT "\${FlagDefs}" MATCHES "(flagMSC(8|9|10|11|12|15)X64)" )
+  if ( NOT "\${FlagDefs}" MATCHES "(flagMSC(8|9|10|11|12|14)X64)" )
       set ( MSVC_LINKER_SUBSYSTEM ",5.01" )
   endif()
   if ( "\${FlagDefs}" MATCHES "flagMSC(8|9)ARM" )
