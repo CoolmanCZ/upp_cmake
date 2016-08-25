@@ -765,9 +765,10 @@ generate_cmake_from_upp()
             if [ ${files_start} -gt 0 ]; then
                 # Find precompiled header option
                 if [[ "${line}" =~ $RE_FILE_PCH ]] && [[ "${line}" =~ BUILDER_OPTION ]]; then
+                    local pch_file=${line// */}
                     echo >> ${OFN}
                     echo '# Precompiled headers file' >> ${OFN}
-                    echo "set ( PCH_FILE ${line// */} )" >> ${OFN}
+                    echo "set ( PCH_FILE ${pch_file} )" >> ${OFN}
                 fi
 
                 # Split lines with charset, options, ...
@@ -1099,10 +1100,6 @@ if ( WIN32 )
     add_definitions ( -DflagWIN32 )
   endif()
 
-  if ( "\${FlagDefs}" MATCHES "flagDLL" )
-    set ( TARGET_EXT ".dll" )
-  endif()
-
 else()
   remove_definitions( -DflagWIN32 )
 
@@ -1118,15 +1115,11 @@ else()
     add_definitions( -DflagFREEBSD )
   endif()
 
-  if ( "\${FlagDefs}" MATCHES "flagDLL" )
-    set ( TARGET_EXT ".so" )
-  endif()
-
 endif()
 get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 
 # Set GCC builder flag
-if ( CMAKE_COMPILER_IS_GNUCC AND NOT "\${FlagDefs}" MATCHES "flagGCC[;$]" )
+if ( CMAKE_COMPILER_IS_GNUCC AND NOT "\${FlagDefs}" MATCHES "flagGCC(;|$)" )
   remove_definitions ( -DflagMSC )
   add_definitions( -DflagGCC )
   get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
@@ -1200,7 +1193,7 @@ if ( "\${FlagDefs}" MATCHES "flagDEBUG" )
 
   set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -O0" )
 
-  if ( NOT "\${FlagDefs}" MATCHES "(flagDEBUG)[;$]" )
+  if ( NOT "\${FlagDefs}" MATCHES "(flagDEBUG)(;|$)" )
       add_definitions ( -DflagDEBUG )
       get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
   endif()
@@ -1254,10 +1247,10 @@ if ( "\${FlagDefs}" MATCHES "flagDEBUG_FULL" )
 endif()
 
 # Set static/shared compiler options
-if ( "\${FlagDefs}" MATCHES "flagSO" )
+if ( "\${FlagDefs}" MATCHES "(flagSO)(;|$)" )
   set ( BUILD_SHARED_LIBS ON )
   set ( LIB_TYPE SHARED )
-  if ( NOT "\${FlagDefs}" MATCHES "(flagSHARED)[;$]" )
+  if ( NOT "\${FlagDefs}" MATCHES "(flagSHARED)(;|$)" )
       add_definitions ( -DflagSHARED )
       get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
   endif()
@@ -1525,7 +1518,11 @@ endif()
 
 # Main program definition
 file ( WRITE \${PROJECT_BINARY_DIR}/null.cpp "" )
-add_executable ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/null.cpp \${rc_file} \${cpp_ini_files} )
+if ( "\${FlagDefs}" MATCHES "(flagSO)(;|$)" )
+  add_library ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/null.cpp \${rc_file} \${cpp_ini_files} )
+else()
+  add_executable ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/null.cpp \${rc_file} \${cpp_ini_files} )
+endif()
 
 # Main program dependecies
 add_dependencies ( ${main_target_name}${BIN_SUFFIX} ${library_dep})
@@ -1536,7 +1533,7 @@ endif()
 # Main program link
 target_link_libraries ( ${main_target_name}${BIN_SUFFIX} \${main_$LINK_LIST} ${library_dep} )
 
-set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES OUTPUT_NAME ${main_target_name}\${TARGET_EXT} )
+set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES OUTPUT_NAME ${main_target_name} )
 EOL
 # End of the cat (CMakeFiles.txt)
 
