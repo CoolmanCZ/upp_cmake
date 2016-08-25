@@ -3,14 +3,23 @@
 GenerateCMakeFiles-lib.sh is the bash script for generating CMakeLists.txt files of the [Ultimate++](http://www.ultimatepp.org/) projects.
 This script was created based on discussion [CMake support](http://www.ultimatepp.org/forums/index.php?t=msg&th=6013&goto=32310&#msg_32310) on the [Ultimate++ forum](http://www.ultimatepp.org/forums).
 
-## Using
-Using of the script is demonstrated in the example.sh, where you should change the variables:
-* "UPP_SRC_DIR" - directory path of the Ultimate++ source tree
-* "PROJECT_NAME" - full path to the ultimate++ project file
-* "PROJECT_FLAGS" - build flags
-
 ## Parameters
-Parameters of the "generate_main_cmake_file" are
+Using of the script is demonstrated in the example.sh, where you should change the variables:
+
+### Main configuration parameters
+* UPP_SRC_DIR - directory path of the Ultimate++ source tree
+* PROJECT_NAME - full path to the ultimate++ project file
+* PROJECT_FLAGS - build flags
+
+### Optional configuration parameters
+* GENERATE_VERBOSE - set to "1" - enable additional output during script processing on the screen
+* GENERATE_DEBUG - set to "1" - enable debug output during script processing on the screen
+* GENERATE_PACKAGE- set to "1" - create a tarball package of the project
+* GENERATE_NOT_C11 - set to "1" - do not use compiler flag -std=c++11 (flag is enabled as default)
+* GENERATE_NOT_PARALLEL - set to "1" - do not build with multiple processes (multiple process build is enabled as default)
+
+## Usage
+Parameters of the "generate_main_cmake_file" function are
 ```
 generate_main_cmake_file <${PROJECT_NAME}> [${PROJECT_FLAGS}]
 ```
@@ -24,7 +33,7 @@ generate_main_cmake_file <${PROJECT_NAME}> [${PROJECT_FLAGS}]
 - Generated CMakeLists.txt files can be used to create a MS Visual C++ project
 - Generated CMakeLists.txt files are generated only for dependent modules of the processed Ultimate++ project
 - Create a distribution package
-- Support to build shared libraries as the target (DLL, SO)
+- Build shared libraries as the target (DLL, SO)
 
 ## Limitation
 - Ultimate++ source tree and directory of the project should be in the same directory as the generator scripts during build (you can use symlinks)
@@ -38,6 +47,10 @@ Build and configuration flags, that are taken into account by the GenerateCMakeF
 - yes - the flag changes / specifies the behavior of the script
 - set - the flag is set by the script, if it is not defined
 - 'empty' - the flag is not used / set by the script
+
+Script set and using new flags (can be disabled by configuration parameters)
+* flagGNUC11 - to set compiler flag -std=c++11
+* flagMP - to enable multiple process build
 
 ### Main configuration flags
 Flag | Supported | Description
@@ -63,7 +76,7 @@ WIN32   | set | Win32.
 POSIX   | set | Anything else then WIN32.
 LINUX   | set | Linux.
 FREEBSD | set | FreeBSD.
-SOLARIS |     | Solaris.
+SOLARIS | set | Solaris.
 
 ### Flags determining the builder (supplied by builder method)
 Flag | Supported | Description

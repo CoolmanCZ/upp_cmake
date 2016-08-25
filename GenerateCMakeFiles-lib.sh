@@ -644,7 +644,7 @@ generate_cmake_header()
 {
     cat > ${OFN} << EOL
 # ${OFN} generated $(export LC_ALL=C; date)
-cmake_minimum_required ( VERSION 2.8 )
+cmake_minimum_required ( VERSION 2.8.5 )
 
 #################################################
 # In-Source builds are strictly prohibited.
@@ -1070,6 +1070,14 @@ generate_main_cmake_file()
 
     generate_cmake_header
 
+    if [ -z "${GENERATE_NOT_C11}" ] || [ "${GENERATE_NOT_C11}" != "1" ]; then
+        main_definitions+=" -DflagGNUC11"
+    fi
+
+    if [ -z "${GENERATE_NOT_PARALLEL}" ] || [ "${GENERATE_NOT_PARALLEL}" != "1" ]; then
+        main_definitions+=" -DflagMP"
+    fi
+
 #    if [ -n "${FLAG_MT}" ]; then
 #        echo 'add_definitions ( -DflagMT )' >> ${OFN}
 #    fi
@@ -1115,6 +1123,10 @@ else()
     add_definitions( -DflagFREEBSD )
   endif()
 
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Solaris" AND NOT "\${FlagDefs}" MATCHES "flagSOLARIS" )
+    add_definitions( -DflagSOLARIS )
+  endif()
+
 endif()
 get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 
@@ -1122,6 +1134,7 @@ get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 if ( CMAKE_COMPILER_IS_GNUCC AND NOT "\${FlagDefs}" MATCHES "flagGCC(;|$)" )
   remove_definitions ( -DflagMSC )
   add_definitions( -DflagGCC )
+
   get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 endif()
 
@@ -1165,6 +1178,11 @@ if ( MSVC )
   if ( \${MSVC_VERSION} EQUAL 1900 )
       add_definitions ( -DflagMSC14\${MSVC_ARCH} )
   endif()
+
+  if ( "\${FlagDefs}" MATCHES "flagMP" AND NOT \${MSVC_VERSION} LESS 1400 )
+    set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -MP" )
+  endif()
+
   get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 endif()
 
@@ -1283,7 +1301,9 @@ endif()
 
 # Set compiler options
 if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
-  set ( EXTRA_GXX_FLAGS "\${EXTRA_GXX_FLAGS} -std=c++11" )
+  if ( "\${FlagDefs}" MATCHES "flagGNUC11" )
+    set ( EXTRA_GXX_FLAGS "\${EXTRA_GXX_FLAGS} -std=c++11" )
+  endif()
 
   if ( MINGW )
       get_directory_property ( FlagDefs COMPILE_DEFINITIONS )

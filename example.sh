@@ -26,9 +26,11 @@
 
 source ./GenerateCMakeFiles-lib.sh
 
-GENERATE_VERBOSE="1"
-GENERATE_DEBUG="1"
-GENERATE_PACKAGE="1"
+GENERATE_VERBOSE="1"        # set to "1" - enable additional output during script processing on the screen
+GENERATE_DEBUG="1"          # set to "1" - enable debug output during script processing on the screen
+GENERATE_PACKAGE="1"        # set to "1" - create a tarball package of the project
+#GENERATE_NOT_C11="1"       # set to "1" - do not use compiler flag -std=c++11 (flag is enabled as default)
+#GENERATE_NOT_PARALLEL="1"  # set to "1" - do not build with multiple processes (parralel build is enabled as default)
 
 UPP_SRC_BASE="upp-x11-src-2016-07-11"
 UPP_SRC_DIR="${UPP_SRC_BASE}/uppsrc"
