@@ -17,6 +17,7 @@ Using of the script is demonstrated in the example.sh, where you should change t
 * GENERATE_PACKAGE- set to "1" - create a tarball package of the project
 * GENERATE_NOT_C11 - set to "1" - do not use compiler flag -std=c++11 (flag is enabled as default)
 * GENERATE_NOT_PARALLEL - set to "1" - do not build with multiple processes (multiple process build is enabled as default)
+* GENERATE_NOT_PCH - set to "1" - do not build with precompiled headers support (precompiled headers support is enabled as default)
 
 ## Usage
 Parameters of the "generate_main_cmake_file" function are
@@ -34,13 +35,14 @@ generate_main_cmake_file <${PROJECT_NAME}> [${PROJECT_FLAGS}]
 - Generated CMakeLists.txt files are generated only for dependent modules of the processed Ultimate++ project
 - Create a distribution package
 - Build shared libraries as the target (DLL, SO)
+- Precompiled headers (PCH) (for GNU)
 
 ## Limitation
 - Ultimate++ source tree and directory of the project should be in the same directory as the generator scripts during build (you can use symlinks)
 - Some options are not taken into account when generating CMakeLists
 
 ## TODO
-- Support of the pre-compiled headers (PCH)
+- Support of the precompiled headers (PCH) (for MSVC and Clang)
 
 ## Flags
 Build and configuration flags, that are taken into account by the GenerateCMakeFiles-lib.sh script.
@@ -49,8 +51,9 @@ Build and configuration flags, that are taken into account by the GenerateCMakeF
 - 'empty' - the flag is not used / set by the script
 
 Script set and using new flags (can be disabled by configuration parameters)
-* flagGNUC11 - to set compiler flag -std=c++11
-* flagMP - to enable multiple process build
+* flagGNUC11 - set compiler flag -std=c++11
+* flagMP - enable multiple process build (MSVC)
+* flagPCH - use precompiled headers during build (only GCC is supported now)
 
 ### Main configuration flags
 Flag | Supported | Description
