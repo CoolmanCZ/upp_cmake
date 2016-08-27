@@ -977,7 +977,7 @@ generate_cmake_from_upp()
         echo 'endif()' >> ${OFN}
         echo "if ( DEFINED flagPCH )" >> ${OFN}
         echo "  get_filename_component ( PCH_NAME \${${PCH_FILE}} NAME )" >> ${OFN}
-        echo "      set_source_files_properties ( \${$SOURCE_LIST_CPP} PROPERTIES COMPILE_FLAGS \"-H -include \${CMAKE_CURRENT_BINARY_DIR}/\${PCH_NAME} -Winvalid-pch\" )" >> ${OFN}
+        echo "      set_source_files_properties ( \${$SOURCE_LIST_CPP} PROPERTIES COMPILE_FLAGS \"-include \${CMAKE_CURRENT_BINARY_DIR}/\${PCH_NAME} -Winvalid-pch\" )" >> ${OFN}
         echo 'endif()' >> ${OFN}
         echo >> ${OFN}
 
@@ -1672,7 +1672,9 @@ if ( DEFINED flagPCH )
         get_target_property ( ${PCH_INCLUDE_LIST} \${target} ${PCH_INCLUDE_LIST} )
         list ( APPEND PCH_INCLUDE_DIRS \${${PCH_INCLUDE_LIST}} )
     endforeach()
-    list ( REMOVE_DUPLICATES PCH_INCLUDE_DIRS )
+    if ( PCH_INCLUDE_DIRS )
+        list ( REMOVE_DUPLICATES PCH_INCLUDE_DIRS )
+    endif()
 
     foreach ( target \${${main_target_name}_${DEPEND_LIST}} )
         get_target_property ( ${PCH_FILE} \${target} ${PCH_FILE} )
