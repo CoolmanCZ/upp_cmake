@@ -966,7 +966,7 @@ generate_cmake_from_upp()
 
         echo >> ${OFN}
         echo '# Precompiled headers settings' >> ${OFN}
-        echo "get_directory_property ( ${PCH_COMPILE_DEFINITIONS} DEFINITIONS )" >> ${OFN}
+        echo "get_directory_property ( ${PCH_COMPILE_DEFINITIONS} COMPILE_DEFINITIONS )" >> ${OFN}
         echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${PCH_FILE} \"\${${PCH_FILE}}\" )" >> ${OFN}
         echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${PCH_OUTPUT_DIR} \"\${CMAKE_CURRENT_BINARY_DIR}\" )" >> ${OFN}
         echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${PCH_INCLUDE_LIST} \"\${${INCLUDE_LIST}}\" )" >> ${OFN}
@@ -1511,7 +1511,11 @@ function ( generate_pch TARGET_NAME ${PCH_FILE} PCH_INCLUDE_DIRS )
         list ( APPEND compile_flags "-I\${include_dir}" )
     endforeach()
 
-    list ( APPEND compile_flags \${${PCH_COMPILE_DEFINITIONS}} )
+    # Add target compile definitions
+    foreach ( compile_def \${${PCH_COMPILE_DEFINITIONS}} )
+        list ( APPEND compile_flags "-D\${compile_def}" )
+    endforeach()
+
     list ( REMOVE_DUPLICATES compile_flags )
     separate_arguments ( compile_flags )
 
