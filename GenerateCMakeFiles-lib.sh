@@ -975,9 +975,15 @@ generate_cmake_from_upp()
         echo "if ( ${PCH_FILE}_LENGTH GREATER 1 )" >> ${OFN}
         echo '  message ( FATAL_ERROR "Precompiled headers list can contain only one header file!" )' >> ${OFN}
         echo 'endif()' >> ${OFN}
-        echo "if ( DEFINED flagPCH )" >> ${OFN}
+        echo "if ( ${PCH_FILE} AND DEFINED flagPCH )" >> ${OFN}
         echo "  get_filename_component ( PCH_NAME \${${PCH_FILE}} NAME )" >> ${OFN}
-        echo "      set_source_files_properties ( \${$SOURCE_LIST_CPP} PROPERTIES COMPILE_FLAGS \"-include \${CMAKE_CURRENT_BINARY_DIR}/\${PCH_NAME} -Winvalid-pch\" )" >> ${OFN}
+        echo '  if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" )' >> ${OFN}
+        echo '      set ( PCH_INCLUDE_PARAMS "-include ${CMAKE_CURRENT_BINARY_DIR}/${PCH_NAME}" )' >> ${OFN}
+        echo '  endif()' >> ${OFN}
+        echo '  if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )' >> ${OFN}
+        echo '      set ( PCH_INCLUDE_PARAMS "-include-pch ${CMAKE_CURRENT_BINARY_DIR}/${PCH_NAME}.pch" )' >> ${OFN}
+        echo '  endif()' >> ${OFN}
+        echo "  set_source_files_properties ( \${$SOURCE_LIST_CPP} PROPERTIES COMPILE_FLAGS \"\${PCH_INCLUDE_PARAMS} -Winvalid-pch\" )" >> ${OFN}
         echo 'endif()' >> ${OFN}
         echo >> ${OFN}
 
@@ -1130,7 +1136,6 @@ generate_main_cmake_file()
 
 # Set the default include directory for the whole project
 set ( UPP_SOURCE_DIRECTORY ${UPP_SRC_DIR} )
-include_directories ( BEFORE \${CMAKE_CURRENT_SOURCE_DIR} )
 include_directories ( BEFORE \${UPP_SOURCE_DIRECTORY} )
 
 # Set the default path for built executables to the bin directory
@@ -1184,28 +1189,6 @@ if ( CMAKE_COMPILER_IS_GNUCC )
   endif()
 
   get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
-endif()
-
-# Precompiled headers support
-if ( "\${FlagDefs}" MATCHES "flagPCH" )
-  if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" )
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.4 )
-        message ( WARNING
-            "Precompiled headers are introduced with GCC 3.4 (current version \${CMAKE_CXX_COMPILER_VERSION})."
-            "No support in any earlier releases." )
-        remove_definitions ( -DflagPCH )
-    endif()
-  else()
-    remove_definitions ( -DflagPCH )
-  endif()
-
-  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
-endif()
-
-if ( "\${FlagDefs}" MATCHES "flagPCH" )
-  message ( STATUS "Build with PCH: TRUE" )
-else()
-  message ( STATUS "Build with PCH: FALSE" )
 endif()
 
 # Check supported compilation architecture environment
@@ -1360,6 +1343,34 @@ else()
 endif()
 message ( STATUS "Build with flagSHARED: \${STATUS_SHARED}" )
 
+# Precompiled headers support
+if ( "\${FlagDefs}" MATCHES "flagPCH" )
+  if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
+    if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.4 )
+        message ( WARNING
+            "Precompiled headers are introduced with GCC 3.4.\n"
+            "No support of the PCH in any earlier releases. (current version \${CMAKE_CXX_COMPILER_VERSION})." )
+        remove_definitions ( -DflagPCH )
+    endif()
+    if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.5 )
+        message ( WARNING
+            "There are some problems with precompiled headers in Clang version less 3.5.\n"
+            "No support of the PCH in any earlier releases. (current version \${CMAKE_CXX_COMPILER_VERSION})." )
+        remove_definitions ( -DflagPCH )
+    endif()
+  else()
+    remove_definitions ( -DflagPCH )
+  endif()
+
+  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
+endif()
+
+if ( "\${FlagDefs}" MATCHES "flagPCH" )
+  message ( STATUS "Build with PCH: TRUE" )
+else()
+  message ( STATUS "Build with PCH: FALSE" )
+endif()
+
 # Main configuration flags (MT, GUI, DLL)
 if ( "\${FlagDefs}" MATCHES "flagMT" )
   find_package ( Threads REQUIRED )
@@ -1466,7 +1477,7 @@ elseif ( MSVC )
 endif()
 
 # Function to generate precompiled header
-function ( generate_gnu_pch TARGET_NAME ${PCH_FILE} PCH_INCLUDE_DIRS )
+function ( generate_pch TARGET_NAME ${PCH_FILE} PCH_INCLUDE_DIRS )
     get_filename_component ( PCH_NAME \${${PCH_FILE}} NAME )
     get_filename_component ( PCH_DIR \${${PCH_FILE}} PATH )
     get_target_property ( ${PCH_COMPILE_DEFINITIONS} \${TARGET_NAME} ${PCH_COMPILE_DEFINITIONS} )
@@ -1480,7 +1491,7 @@ function ( generate_gnu_pch TARGET_NAME ${PCH_FILE} PCH_INCLUDE_DIRS )
     # Add copied header file directory
     # That directory is searched before (or instead of) the directory containing the original header
     # Commented out due to problem with the main target compilation ( it is not necessary to include this dir )
-    # list ( APPEND compile_flags "-I\${PCH_OUTPUT_DIR}" )
+    #list ( APPEND compile_flags "-I\${PCH_OUTPUT_DIR}" )
 
     # Add main target defined include directories
     get_directory_property ( include_directories DIRECTORY \${CMAKE_CURRENT_SOURCE_DIR} INCLUDE_DIRECTORIES )
@@ -1500,10 +1511,19 @@ function ( generate_gnu_pch TARGET_NAME ${PCH_FILE} PCH_INCLUDE_DIRS )
     list ( REMOVE_DUPLICATES compile_flags )
     separate_arguments ( compile_flags )
 
+    if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" )
+        set ( PCH_BINARY_SUFFIX ".gch" )
+    endif()
+
+    if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
+        set ( PCH_BINARY_SUFFIX ".pch" )
+    endif()
+
     set ( PCH_HEADER "\${PCH_OUTPUT_DIR}/\${PCH_NAME}" )
-    set ( PCH_BINARY "\${PCH_HEADER}.gch" )
+    set ( PCH_BINARY "\${PCH_HEADER}\${PCH_BINARY_SUFFIX}" )
+    set ( PCH_COMPILE_PARAMS -x c++-header )
     add_custom_command ( OUTPUT \${PCH_BINARY}
-        COMMAND \${CMAKE_CXX_COMPILER} \${compile_flags} -x c++-header -o \${PCH_BINARY} \${PCH_HEADER}
+        COMMAND \${CMAKE_CXX_COMPILER} \${compile_flags} \${PCH_COMPILE_PARAMS} -o \${PCH_BINARY} \${PCH_HEADER}
         COMMENT "PCH for the file \${PCH_HEADER}"
     )
 
@@ -1576,7 +1596,7 @@ function ( create_brc_source input_file output_file symbol_name compression symb
   endif()
 endfunction()
 
-# Initialize definition flags
+# Initialize definition flags (flags are used during targets compilation)
 get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 foreach( comp_def \${FlagDefs} )
   set ( \${comp_def} 1 )
@@ -1665,8 +1685,8 @@ if ( DEFINED MAIN_TARGET_LINK_FLAGS )
 endif()
 
 # Precompiled headers processing
-if ( DEFINED flagPCH )
-  if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" )
+if ( "\${FlagDefs}" MATCHES "flagPCH" )
+  if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
     # Collect included directories of the external packages from all targets
     foreach ( target \${${main_target_name}_${DEPEND_LIST}} )
         get_target_property ( ${PCH_INCLUDE_LIST} \${target} ${PCH_INCLUDE_LIST} )
@@ -1679,7 +1699,7 @@ if ( DEFINED flagPCH )
     foreach ( target \${${main_target_name}_${DEPEND_LIST}} )
         get_target_property ( ${PCH_FILE} \${target} ${PCH_FILE} )
         if ( ${PCH_FILE} )
-            generate_gnu_pch ( \${target} \${${PCH_FILE}} "\${PCH_INCLUDE_DIRS}" )
+            generate_pch ( \${target} \${${PCH_FILE}} "\${PCH_INCLUDE_DIRS}" )
         endif()
     endforeach()
   endif()
