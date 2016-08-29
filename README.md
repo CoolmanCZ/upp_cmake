@@ -43,6 +43,7 @@ generate_main_cmake_file <${PROJECT_NAME}> [${PROJECT_FLAGS}]
 
 ## TODO
 - Support of the precompiled headers (PCH) for MSVC
+- Resolve problem to build DLL as target
 
 ## Flags
 Build and configuration flags, that are taken into account by the GenerateCMakeFiles-lib.sh script.

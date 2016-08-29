@@ -1672,6 +1672,15 @@ endif()
 file ( WRITE \${PROJECT_BINARY_DIR}/null.cpp "" )
 if ( "\${FlagDefs}" MATCHES "(flagSO)(;|$)" )
   add_library ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/null.cpp \${rc_file} \${cpp_ini_files} )
+  if ( WIN32 )
+    include ( GenerateExportHeader )
+    generate_export_header ( ${main_target_name}${BIN_SUFFIX}
+        BASE_NAME ${main_target_name}${BIN_SUFFIX}
+        EXPORT_MACRO_NAME ${main_target_name}${BIN_SUFFIX}_EXPORT
+        EXPORT_FILE_NAME ${main_target_name}${BIN_SUFFIX}_Export.h
+        STATIC_DEFINE ${main_target_name}${BIN_SUFFIX}_BUILT_AS_STATIC
+    )
+  endif()
 else()
   add_executable ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/null.cpp \${rc_file} \${cpp_ini_files} )
 endif()
