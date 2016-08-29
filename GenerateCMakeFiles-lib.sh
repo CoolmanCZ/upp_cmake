@@ -1205,7 +1205,11 @@ message ( STATUS "Build compilation: \${STATUS_COMPILATION} bits" )
 # Set MSVC builder flags
 if ( MSVC )
   remove_definitions( -DflagGCC )
-  add_definitions ( -DflagMSC )
+
+  if ( NOT "\${FlagDefs}" MATCHES "flagMSC(;|$)" )
+    add_definitions ( -DflagMSC )
+  endif()
+
   if ( \${MSVC_VERSION} EQUAL 1200 )
       add_definitions ( -DflagMSC6\${MSVC_ARCH} )
   endif()
