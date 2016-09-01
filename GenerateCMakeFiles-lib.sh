@@ -27,6 +27,8 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+GENERATE_CMAKE_VERSION="1.0"
+
 OFN="CMakeLists.txt"        # Output file name
 
 LINK_LIST="LINK_LIST"
@@ -37,9 +39,9 @@ HEADER_LIST="HEADER_LIST"
 INCLUDE_LIST="INCLUDE_LIST"
 SOURCE_LIST_ICPP="SOURCE_LIST_ICPP"
 SOURCE_LIST_RC="SOURCE_LIST_RC"
+COMPILE_FLAGS_LIST="COMPILE_FLAGS_LIST"
 
 PCH_FILE="PCH_FILE"
-PCH_OUTPUT_DIR="PCH_OUTPUT_DIR"
 PCH_INCLUDE_LIST="PCH_INCLUDE_LIST"
 PCH_COMPILE_DEFINITIONS="PCH_COMPILE_DEFINITIONS"
 
@@ -367,35 +369,39 @@ list_parse()
     echo >> ${OFN}
     echo "#${1}" >> ${OFN}
 
-    options=$(string_get_in_parenthesis "${line}")
-    options=$(if_options_parse_all "${options}")              # Parse options
-#    echo "\"option: $options\""
+    if [[ "${line}" =~ BUILDER_OPTION ]]; then
+        $(if_options_builder "${line}")
+    else
+        options=$(string_get_in_parenthesis "${line}")
+        options=$(if_options_parse_all "${options}")              # Parse options
+#        echo "\"option: $options\""
 
-    parameters=$(string_get_after_parenthesis "${line}")
-    parameters=$(string_remove_comma "${parameters}")
-#    echo "\"param : $parameters\""
-#    echo "\"list  : $list\""
+        parameters=$(string_get_after_parenthesis "${line}")
+        parameters=$(string_remove_comma "${parameters}")
+#        echo "\"param : $parameters\""
+#        echo "\"list  : $list\""
 
-    # Add optional dependency target to generate CMakeLists.txt
-    if [[ ${list} =~ "${DEPEND_LIST}" ]]; then
-        local -a new_parameters=(${parameters})
-        parameters=""
-        for item in ${new_parameters[@]}; do
-            parameters+="$(string_replace_dash "${item}${LIB_SUFFIX}") "
-            UPP_ALL_USES+=(${item})
-        done
-    fi
-
-    if [ -n "${options}" ] ; then
-        echo "if (${options})" >> ${OFN}
-        if [ -n "${target_name}" ]; then
-            local -a check_library_array=(${parameters})
-            for check_library in "${check_library_array[@]}"; do
-                add_require_for_lib "${list}" "${check_library}"
+        # Add optional dependency target to generate CMakeLists.txt
+        if [[ ${list} =~ "${DEPEND_LIST}" ]]; then
+            local -a new_parameters=(${parameters})
+            parameters=""
+            for item in ${new_parameters[@]}; do
+                parameters+="$(string_replace_dash "${item}${LIB_SUFFIX}") "
+                UPP_ALL_USES+=(${item})
             done
         fi
-        echo "  list ( APPEND ${list} ${parameters} )" >> ${OFN}
-        echo "endif()" >> ${OFN}
+
+        if [ -n "${options}" ] ; then
+            echo "if (${options})" >> ${OFN}
+            if [ -n "${target_name}" ]; then
+                local -a check_library_array=(${parameters})
+                for check_library in "${check_library_array[@]}"; do
+                    add_require_for_lib "${list}" "${check_library}"
+                done
+            fi
+            echo "  list ( APPEND ${list} ${parameters} )" >> ${OFN}
+            echo "endif()" >> ${OFN}
+        fi
     fi
 }
 
@@ -443,32 +449,6 @@ if_options_builder()
         echo "  set ( CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE} \"\${CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE}} ${parameters_msvc}\")" >> ${OFN}
         echo "  set ( CMAKE_C_FLAGS_\${CMAKE_BUILD_TYPE} \"\${CMAKE_C_FLAGS_\${CMAKE_BUILD_TYPE}} ${parameters_msvc}\")" >> ${OFN}
         echo 'endif()' >> ${OFN}
-    fi
-}
-
-options_parse()
-{
-    local line="${1}"
-    local options=""
-    local parameters=""
-
-    echo >> ${OFN}
-    echo "#${1}" >> ${OFN}
-
-    if [[ "${line}" =~ BUILDER_OPTION ]]; then
-        $(if_options_builder "${line}")
-    else
-        options=$(string_get_in_parenthesis "${line}")
-        options=$(if_options_parse_all "${options}")              # Parse options
-
-        parameters=$(string_get_after_parenthesis "${line}")
-        parameters=$(string_remove_comma "${parameters}")
-
-        if [ -n "${options}" ]; then
-            echo "if ($options)" >> ${OFN}
-            echo "      add_definitions ( ${parameters} )" >> ${OFN}
-            echo "endif()" >> ${OFN}
-        fi
     fi
 }
 
@@ -670,7 +650,6 @@ endif()
 
 # Set the default library directory to store built libraries
 set ( LIBRARY_OUTPUT_PATH \${PROJECT_BINARY_DIR}/lib )
-include_directories ( BEFORE \${PROJECT_BINARY_DIR}/inc )
 EOL
 }
 
@@ -715,7 +694,7 @@ generate_cmake_from_upp()
                 options_start=1
                 # Parse project options with the condition
                 if [[ ${line} =~ '(' ]] && [[ ${line} =~ ';' ]]; then
-                    options_parse "${line}"
+                    list_parse "${line}" ${COMPILE_FLAGS_LIST} "${target_name}"
                     options_start=0
                 fi
                 continue;
@@ -951,39 +930,53 @@ generate_cmake_from_upp()
         echo "set_source_files_properties ( \${$HEADER_LIST} PROPERTIES HEADER_FILE_ONLY ON )" >> ${OFN}
         echo "add_library ( ${target_name}${LIB_SUFFIX} \${LIB_TYPE} \${$SOURCE_LIST_CPP} \${$SOURCE_LIST_C})" >> ${OFN}
         echo "target_include_directories ( ${target_name}${LIB_SUFFIX} PUBLIC \${${INCLUDE_LIST}} )" >> ${OFN}
+        echo "set_property ( TARGET ${target_name}${LIB_SUFFIX} APPEND PROPERTY COMPILE_OPTIONS \"\${${COMPILE_FLAGS_LIST}}\" )" >> ${OFN}
 
         echo >> ${OFN}
         echo "# Module dependecies" >> ${OFN}
-        echo "if ( DEFINED ${target_name}_${DEPEND_LIST} )" >> ${OFN}
+        echo "if ( ${target_name}_${DEPEND_LIST} )" >> ${OFN}
         echo "  add_dependencies ( ${target_name}${LIB_SUFFIX} \${${target_name}_$DEPEND_LIST} )" >> ${OFN}
         echo "endif()" >> ${OFN}
 
         echo >> ${OFN}
         echo "# Module link" >> ${OFN}
-        echo "if ( DEFINED ${target_name}_${DEPEND_LIST} OR DEFINED ${LINK_LIST} )" >> ${OFN}
+        echo "if ( ${target_name}_${DEPEND_LIST} OR ${LINK_LIST} )" >> ${OFN}
         echo "  target_link_libraries ( ${target_name}${LIB_SUFFIX} \${${target_name}_${DEPEND_LIST}} \${${LINK_LIST}} )" >> ${OFN}
         echo "endif()" >> ${OFN}
 
         echo >> ${OFN}
         echo '# Precompiled headers settings' >> ${OFN}
         echo "get_directory_property ( ${PCH_COMPILE_DEFINITIONS} COMPILE_DEFINITIONS )" >> ${OFN}
+        echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${COMPILE_FLAGS_LIST} \"\${${COMPILE_FLAGS_LIST}}\" )" >> ${OFN}
         echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${PCH_FILE} \"\${${PCH_FILE}}\" )" >> ${OFN}
-        echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${PCH_OUTPUT_DIR} \"\${CMAKE_CURRENT_BINARY_DIR}\" )" >> ${OFN}
         echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${PCH_INCLUDE_LIST} \"\${${INCLUDE_LIST}}\" )" >> ${OFN}
         echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${PCH_COMPILE_DEFINITIONS} \"\${${PCH_COMPILE_DEFINITIONS}}\" )" >> ${OFN}
+        echo >> ${OFN}
         echo "list ( LENGTH ${PCH_FILE} ${PCH_FILE}_LENGTH )" >> ${OFN}
         echo "if ( ${PCH_FILE}_LENGTH GREATER 1 )" >> ${OFN}
         echo '  message ( FATAL_ERROR "Precompiled headers list can contain only one header file!" )' >> ${OFN}
         echo 'endif()' >> ${OFN}
         echo "if ( ${PCH_FILE} AND DEFINED flagPCH )" >> ${OFN}
         echo "  get_filename_component ( PCH_NAME \${${PCH_FILE}} NAME )" >> ${OFN}
+        echo "  set ( PCH_DIR \${PROJECT_PCH_DIR}/${target_name}${LIB_SUFFIX} )" >> ${OFN}
+        echo '  set ( PCH_HEADER ${PCH_DIR}/${PCH_NAME} )' >> ${OFN}
         echo '  if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" )' >> ${OFN}
-        echo '      set ( PCH_INCLUDE_PARAMS "-include ${CMAKE_CURRENT_BINARY_DIR}/${PCH_NAME}" )' >> ${OFN}
+        echo '      if ( ${CMAKE_VERBOSE_MAKEFILE} EQUAL 1 )' >> ${OFN}
+        echo '        set ( PCH_INCLUDE_PARAMS " -H -I${CMAKE_CURRENT_SOURCE_DIR} -Winvalid-pch -include ${PCH_HEADER}" )' >> ${OFN}
+        echo '      else()' >> ${OFN}
+        echo '        set ( PCH_INCLUDE_PARAMS " -I${CMAKE_CURRENT_SOURCE_DIR} -Winvalid-pch -include ${PCH_HEADER}" )' >> ${OFN}
+        echo '      endif()' >> ${OFN}
         echo '  endif()' >> ${OFN}
         echo '  if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )' >> ${OFN}
-        echo '      set ( PCH_INCLUDE_PARAMS "-include-pch ${CMAKE_CURRENT_BINARY_DIR}/${PCH_NAME}.pch" )' >> ${OFN}
+        echo '      set ( PCH_INCLUDE_PARAMS " -Winvalid-pch -include-pch ${PCH_HEADER}.pch" )' >> ${OFN}
         echo '  endif()' >> ${OFN}
-        echo "  set_source_files_properties ( \${$SOURCE_LIST_CPP} PROPERTIES COMPILE_FLAGS \"\${PCH_INCLUDE_PARAMS} -Winvalid-pch\" )" >> ${OFN}
+        echo '  if ( MSVC )' >> ${OFN}
+        echo "      set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES COMPILE_FLAGS \"-Yu\${PCH_NAME} -Fp\${PCH_HEADER}.pch\" )" >> ${OFN}
+        echo "      set_source_files_properties ( \${$SOURCE_LIST_CPP} PROPERTIES COMPILE_FLAGS \"Yc\${PCH_NAME} -Fp\${PCH_HEADER}.pch\" )" >> ${OFN}
+        echo '  endif()' >> ${OFN}
+        echo '  if ( PCH_INCLUDE_PARAMS )' >> ${OFN}
+        echo "      set_source_files_properties ( \${$SOURCE_LIST_CPP} PROPERTIES COMPILE_FLAGS \"\${PCH_INCLUDE_PARAMS}\" )" >> ${OFN}
+        echo '  endif()' >> ${OFN}
         echo 'endif()' >> ${OFN}
         echo >> ${OFN}
 
@@ -1134,9 +1127,14 @@ generate_main_cmake_file()
     # Begin of the cat (CMakeFiles.txt)
     cat >> ${OFN} << EOL
 
-# Set the default include directory for the whole project
+# Set the project common path
 set ( UPP_SOURCE_DIRECTORY ${UPP_SRC_DIR} )
+set ( PROJECT_INC_DIR \${PROJECT_BINARY_DIR}/inc )
+set ( PROJECT_PCH_DIR \${PROJECT_BINARY_DIR}/pch )
+
+# Set the default include directory for the whole project
 include_directories ( BEFORE \${UPP_SOURCE_DIRECTORY} )
+include_directories ( BEFORE \${PROJECT_INC_DIR} )
 
 # Set the default path for built executables to the bin directory
 set ( EXECUTABLE_OUTPUT_PATH \${PROJECT_BINARY_DIR}/bin )
@@ -1482,15 +1480,16 @@ endif()
 
 # Function to generate precompiled header
 function ( generate_pch TARGET_NAME ${PCH_FILE} PCH_INCLUDE_DIRS )
+    set ( PCH_OUTPUT_DIR \${PROJECT_PCH_DIR}/\${TARGET_NAME} )
     get_filename_component ( PCH_NAME \${${PCH_FILE}} NAME )
-    get_filename_component ( PCH_DIR \${${PCH_FILE}} PATH )
-    get_target_property ( ${PCH_COMPILE_DEFINITIONS} \${TARGET_NAME} ${PCH_COMPILE_DEFINITIONS} )
-    get_target_property ( ${PCH_OUTPUT_DIR} \${TARGET_NAME} ${PCH_OUTPUT_DIR} )
+    get_filename_component ( TARGET_DIR \${${PCH_FILE}} PATH )
 
     file ( COPY \${PCH_FILE} DESTINATION \${PCH_OUTPUT_DIR} )
 
     # Prepare compile flag definition
-    set ( compile_flags \${CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE}} )
+    get_target_property ( ${COMPILE_FLAGS_LIST} \${TARGET_NAME} ${COMPILE_FLAGS_LIST} )
+    string ( REGEX REPLACE ";" " " ${COMPILE_FLAGS_LIST} "\${${COMPILE_FLAGS_LIST}}" )
+    set ( compile_flags "\${CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE}} \${${COMPILE_FLAGS_LIST}}" )
 
     # Add copied header file directory
     # That directory is searched before (or instead of) the directory containing the original header
@@ -1504,7 +1503,7 @@ function ( generate_pch TARGET_NAME ${PCH_FILE} PCH_INCLUDE_DIRS )
     endforeach()
 
     # Add source directory of the precompiled header file - can't be the first included directory
-    list ( APPEND compile_flags "-I\${PCH_DIR}" )
+    list ( APPEND compile_flags "-I\${TARGET_DIR}" )
 
     # Add included directories of the external packages collected from defintions of all targets
     foreach ( include_dir \${PCH_INCLUDE_DIRS} )
@@ -1512,6 +1511,7 @@ function ( generate_pch TARGET_NAME ${PCH_FILE} PCH_INCLUDE_DIRS )
     endforeach()
 
     # Add target compile definitions
+    get_target_property ( ${PCH_COMPILE_DEFINITIONS} \${TARGET_NAME} ${PCH_COMPILE_DEFINITIONS} )
     foreach ( compile_def \${${PCH_COMPILE_DEFINITIONS}} )
         list ( APPEND compile_flags "-D\${compile_def}" )
     endforeach()
@@ -1519,19 +1519,19 @@ function ( generate_pch TARGET_NAME ${PCH_FILE} PCH_INCLUDE_DIRS )
     list ( REMOVE_DUPLICATES compile_flags )
     separate_arguments ( compile_flags )
 
+    # Prepare compilations options
+    set ( PCH_BINARY_SUFFIX ".pch" )
     if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" )
         set ( PCH_BINARY_SUFFIX ".gch" )
     endif()
 
-    if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
-        set ( PCH_BINARY_SUFFIX ".pch" )
-    endif()
-
     set ( PCH_HEADER "\${PCH_OUTPUT_DIR}/\${PCH_NAME}" )
     set ( PCH_BINARY "\${PCH_HEADER}\${PCH_BINARY_SUFFIX}" )
-    set ( PCH_COMPILE_PARAMS -x c++-header )
+    set ( PCH_COMPILE_PARAMS -x c++-header -o \${PCH_BINARY} \${PCH_HEADER} )
+
+    # Generate precompiled header file
     add_custom_command ( OUTPUT \${PCH_BINARY}
-        COMMAND \${CMAKE_CXX_COMPILER} \${compile_flags} \${PCH_COMPILE_PARAMS} -o \${PCH_BINARY} \${PCH_HEADER}
+        COMMAND \${CMAKE_CXX_COMPILER} \${compile_flags} \${PCH_COMPILE_PARAMS}
         COMMENT "PCH for the file \${PCH_HEADER}"
     )
 
@@ -1645,7 +1645,7 @@ EOL
     cat >> ${OFN} << EOL
 
 # Creation of the file build_info.h
-set ( BUILD_INFO_H \${PROJECT_BINARY_DIR}/inc/build_info.h )
+set ( BUILD_INFO_H \${PROJECT_INC_DIR}/build_info.h )
 string ( TIMESTAMP bmYEAR %Y )
 string ( TIMESTAMP bmMONTH %m )
 string ( TIMESTAMP bmDAY %d )
