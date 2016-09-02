@@ -1491,18 +1491,13 @@ function ( generate_pch TARGET_NAME ${PCH_FILE} PCH_INCLUDE_DIRS )
     string ( REGEX REPLACE ";" " " ${COMPILE_FLAGS_LIST} "\${${COMPILE_FLAGS_LIST}}" )
     set ( compile_flags "\${CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE}} \${${COMPILE_FLAGS_LIST}}" )
 
-    # Add copied header file directory
-    # That directory is searched before (or instead of) the directory containing the original header
-    # Commented out due to problem with the main target compilation ( it is not necessary to include this dir )
-    #list ( APPEND compile_flags "-I\${PCH_OUTPUT_DIR}" )
-
     # Add main target defined include directories
     get_directory_property ( include_directories DIRECTORY \${CMAKE_CURRENT_SOURCE_DIR} INCLUDE_DIRECTORIES )
     foreach ( include_dir \${include_directories} )
         list ( APPEND compile_flags "-I\${include_dir}" )
     endforeach()
 
-    # Add source directory of the precompiled header file - can't be the first included directory
+    # Add source directory of the precompiled header file - for quoted include files
     list ( APPEND compile_flags "-iquote\${TARGET_DIR}" )
 
     # Add included directories of the external packages collected from defintions of all targets

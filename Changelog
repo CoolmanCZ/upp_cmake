@@ -1,3 +1,7 @@
+2016-09-02 19:08:41 +0200 - 0f95d26 : Small correction to support Windows MinGW compiler with flagPCH
+2016-09-02 17:40:52 +0200 - 53b7419 : Add scripts for building targets using MSYS MinGW and MSVC compilers
+2016-09-02 10:58:54 +0200 - c2fabca : Cosmetic
+2016-09-01 16:01:37 +0200 - 6663e0d : Add Changelog
 2016-09-01 16:00:07 +0200 - 561811b : Precompiled headers code refactoring
 2016-08-29 21:43:20 +0200 - 9a3dac4 : Fix of the CMP0059
 2016-08-29 13:19:04 +0200 - 62099e4 : Cosmetic
