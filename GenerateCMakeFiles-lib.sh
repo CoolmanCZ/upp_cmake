@@ -962,9 +962,9 @@ generate_cmake_from_upp()
         echo '  set ( PCH_HEADER ${PCH_DIR}/${PCH_NAME} )' >> ${OFN}
         echo '  if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" )' >> ${OFN}
         echo '      if ( ${CMAKE_VERBOSE_MAKEFILE} EQUAL 1 )' >> ${OFN}
-        echo '        set ( PCH_INCLUDE_PARAMS " -H -I${CMAKE_CURRENT_SOURCE_DIR} -Winvalid-pch -include ${PCH_HEADER}" )' >> ${OFN}
+        echo '        set ( PCH_INCLUDE_PARAMS " -H -Winvalid-pch -include ${PCH_HEADER}" )' >> ${OFN}
         echo '      else()' >> ${OFN}
-        echo '        set ( PCH_INCLUDE_PARAMS " -I${CMAKE_CURRENT_SOURCE_DIR} -Winvalid-pch -include ${PCH_HEADER}" )' >> ${OFN}
+        echo '        set ( PCH_INCLUDE_PARAMS " -Winvalid-pch -include ${PCH_HEADER}" )' >> ${OFN}
         echo '      endif()' >> ${OFN}
         echo '  endif()' >> ${OFN}
         echo '  if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )' >> ${OFN}
@@ -1368,9 +1368,9 @@ if ( "\${FlagDefs}" MATCHES "flagPCH" )
 endif()
 
 if ( "\${FlagDefs}" MATCHES "flagPCH" )
-  message ( STATUS "Build with PCH: TRUE" )
+  message ( STATUS "Build with flagPCH: TRUE" )
 else()
-  message ( STATUS "Build with PCH: FALSE" )
+  message ( STATUS "Build with flagPCH: FALSE" )
 endif()
 
 # Main configuration flags (MT, GUI, DLL)
@@ -1503,7 +1503,7 @@ function ( generate_pch TARGET_NAME ${PCH_FILE} PCH_INCLUDE_DIRS )
     endforeach()
 
     # Add source directory of the precompiled header file - can't be the first included directory
-    list ( APPEND compile_flags "-I\${TARGET_DIR}" )
+    list ( APPEND compile_flags "-iquote\${TARGET_DIR}" )
 
     # Add included directories of the external packages collected from defintions of all targets
     foreach ( include_dir \${PCH_INCLUDE_DIRS} )
