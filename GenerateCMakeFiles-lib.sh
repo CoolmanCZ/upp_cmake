@@ -1186,6 +1186,10 @@ if ( CMAKE_COMPILER_IS_GNUCC )
     add_definitions( -DflagGCC )
   endif()
 
+  if ( "\${FlagDefs}" MATCHES "flagGNUC11(;|$)" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 )
+    message ( FATAL_ERROR "GNU GCC version 4.9+ is required to build the project with -std=c++11 parameter!" )
+  endif()
+
   get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 endif()
 
