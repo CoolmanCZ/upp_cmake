@@ -346,7 +346,7 @@ add_require_for_lib()
 
     if [ -n "${req_lib_name}" ]; then
         if [ "${use_pkg}" == "0" ]; then
-            echo "  find_package ( ${req_lib_name} REQUIRED ${req_lib_param})" >> ${OFN}
+            echo "  find_package ( ${req_lib_name} REQUIRED ${req_lib_param} )" >> ${OFN}
         else
             echo "  find_package ( PkgConfig REQUIRED )" >> ${OFN}
             echo "  pkg_check_modules ( ${req_lib_name} REQUIRED ${req_lib_param})" >> ${OFN}
@@ -355,6 +355,15 @@ add_require_for_lib()
         echo "      list ( APPEND ${INCLUDE_LIST} \${${req_lib_name^^}_INCLUDE_${req_lib_dir}} )" >> ${OFN}
         echo "      list ( APPEND ${link_list} \${${req_lib_name^^}_LIBRARIES} )" >> ${OFN}
         echo "  endif()" >> ${OFN}
+
+        if [ "${req_lib_param}" == "gtk" ]; then
+            echo "  find_package ( PkgConfig REQUIRED )" >> ${OFN}
+            echo "  pkg_check_modules ( LIBNOTIFY REQUIRED libnotify )" >> ${OFN}
+            echo "  if ( LIBNOTIFY_FOUND )" >> ${OFN}
+            echo "      list ( APPEND ${INCLUDE_LIST} \${LIBNOTIFY_INCLUDE_DIR} )" >> ${OFN}
+            echo "      list ( APPEND ${link_list} \${LIBNOTIFY_LIBRARIES} )" >> ${OFN}
+            echo "  endif()" >> ${OFN}
+        fi
     fi
 }
 
@@ -1180,14 +1189,14 @@ get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 
 # Set GCC builder flag
 if ( CMAKE_COMPILER_IS_GNUCC )
+  if ( "\${FlagDefs}" MATCHES "flagGNUC11(;|$)" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 )
+    message ( FATAL_ERROR "GNU GCC version 4.9+ is required to use -std=c++11 parameter!" )
+  endif()
+
   remove_definitions ( -DflagMSC )
 
   if ( NOT "\${FlagDefs}" MATCHES "flagGCC(;|$)" )
     add_definitions( -DflagGCC )
-  endif()
-
-  if ( "\${FlagDefs}" MATCHES "flagGNUC11(;|$)" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 )
-    message ( FATAL_ERROR "GNU GCC version 4.9+ is required to build the project with -std=c++11 parameter!" )
   endif()
 
   get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
