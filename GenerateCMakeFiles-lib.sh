@@ -1077,7 +1077,7 @@ generate_package_file()
 
         echo "CMakeLists.txt" > ${package_src_name_archive_list}
 
-        find $(dirname ${PROJECT_NAME}) -name '*' -type f >> ${package_src_name_archive_list}
+        find -H $(dirname ${PROJECT_NAME}) -type d '(' -name .svn -o -name .git ')' -prune -o -name '*' -type f >> ${package_src_name_archive_list}
 
         echo "${UPP_SRC_DIR}/uppconfig.h" >> ${package_src_name_archive_list}
         echo "${UPP_SRC_DIR}/guiplatform.h" >> ${package_src_name_archive_list}
@@ -1144,6 +1144,7 @@ set ( PROJECT_PCH_DIR \${PROJECT_BINARY_DIR}/pch )
 # Set the default include directory for the whole project
 include_directories ( BEFORE \${UPP_SOURCE_DIRECTORY} )
 include_directories ( BEFORE \${PROJECT_INC_DIR} )
+include_directories ( BEFORE \${CMAKE_CURRENT_SOURCE_DIR} )
 
 # Set the default path for built executables to the bin directory
 set ( EXECUTABLE_OUTPUT_PATH \${PROJECT_BINARY_DIR}/bin )
