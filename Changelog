@@ -1,3 +1,7 @@
+2016-09-20 12:16:44 +0200 - 4149358 : A small correction to create and build own project package
+2016-09-15 09:39:53 +0200 - 51c28f4 : Add pkg_check_modules for libnotify for GTK2
+2016-09-13 09:04:03 +0200 - da1105a : GNU GCC version 4.9+ checked to use -std=c++11 parameter.
+2016-09-02 20:21:09 +0200 - bbc507c : Changelog update
 2016-09-02 19:08:41 +0200 - 0f95d26 : Small correction to support Windows MinGW compiler with flagPCH
 2016-09-02 17:40:52 +0200 - 53b7419 : Add scripts for building targets using MSYS MinGW and MSVC compilers
 2016-09-02 10:58:54 +0200 - c2fabca : Cosmetic
