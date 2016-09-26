@@ -1,3 +1,4 @@
+2016-09-20 12:17:21 +0200 - fdafe78 : Changelog update
 2016-09-20 12:16:44 +0200 - 4149358 : A small correction to create and build own project package
 2016-09-15 09:39:53 +0200 - 51c28f4 : Add pkg_check_modules for libnotify for GTK2
 2016-09-13 09:04:03 +0200 - da1105a : GNU GCC version 4.9+ checked to use -std=c++11 parameter.
