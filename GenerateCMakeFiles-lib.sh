@@ -367,6 +367,15 @@ add_require_for_lib()
     fi
 }
 
+add_all_uses() {
+    local value="$1"
+
+    if [[ ! " ${UPP_ALL_USES[@]} " =~ " ${value} " ]]; then
+        UPP_ALL_USES+=(${value})
+    fi
+
+}
+
 list_parse()
 {
     local line="${1}"
@@ -396,7 +405,7 @@ list_parse()
             parameters=""
             for item in ${new_parameters[@]}; do
                 parameters+="$(string_replace_dash "${item}${LIB_SUFFIX}") "
-                UPP_ALL_USES+=(${item})
+                add_all_uses "${item}"
             done
         fi
 
@@ -783,11 +792,11 @@ generate_cmake_from_upp()
 
                     if [ -d "${list}" ]; then
                         if [ "${GENERATE_VERBOSE}" == "1" ]; then
-                            echo "WARNING - directory \"${list}\" can't be added to the list."
+                            echo "SKIPPING the directory \"${list}\". Directory can't be added to the source list."
                         fi
                     elif [ ! -f "${list}" ]; then
                         if [ "${GENERATE_VERBOSE}" == "1" ]; then
-                            echo "WARNING - file \"${list}\" doesn't exist! It was not added to the list."
+                            echo "WARNING - file \"${list}\" doesn't exist! It was not added to the source list."
                         fi
                     else
                         if [[ ${list} =~ $RE_C ]]; then         # C/C++ source files
@@ -815,7 +824,7 @@ generate_cmake_from_upp()
             if [ ${depend_start} -gt 0 ]; then
                 tmp="${line//,}"
                 USES+=(${tmp//;})
-                UPP_ALL_USES+=(${tmp//;})
+                add_all_uses "${tmp//;}"
                 if [ $depend_start -eq 2 ]; then
                     depend_start=-1
                 fi
@@ -1625,8 +1634,8 @@ EOL
     echo '# Include dependent directories of the project' >> ${OFN}
     while [ ${#UPP_ALL_USES_DONE[@]} -lt ${#UPP_ALL_USES[@]} ]; do
         local process_upp=$(get_upp_to_process)
-#        echo "num of elements all : ${#UPP_ALL_USES[@]}"
-#        echo "num of elements done: ${#UPP_ALL_USES_DONE[@]}"
+#        echo "num of elements all : ${#UPP_ALL_USES[@]} (${UPP_ALL_USES[@]})"
+#        echo "num of elements done: ${#UPP_ALL_USES_DONE[@]} (${UPP_ALL_USES_DONE[@]})"
 #        echo "process_upp=\"${process_upp}\""
 
         if [ -n "${process_upp}" ]; then
