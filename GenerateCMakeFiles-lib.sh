@@ -1227,6 +1227,10 @@ message ( STATUS "Build compilation: \${STATUS_COMPILATION} bits" )
 if ( MSVC )
   remove_definitions( -DflagGCC )
 
+  if ( NOT "\${FlagDefs}" MATCHES "flagUSEMALLOC(;|$)" )
+    add_definitions ( -DflagUSEMALLOC )
+  endif()
+
   if ( NOT "\${FlagDefs}" MATCHES "flagMSC(;|$)" )
     add_definitions ( -DflagMSC )
   endif()
