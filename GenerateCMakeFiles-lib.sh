@@ -1649,13 +1649,13 @@ EOL
             else
                 generate_cmake_file ${UPP_SRC_DIR}/${process_upp}/${process_upp}.upp "${process_upp}"
             fi
-            echo "add_subdirectory ( ${UPP_SRC_DIR}/${process_upp} )" >> ${OFN}
+            echo "add_subdirectory ( ${UPP_SRC_DIR}/${process_upp} \${CMAKE_CURRENT_BINARY_DIR}/${process_upp} )" >> ${OFN}
         fi
 
         UPP_ALL_USES_DONE+=("${process_upp}")
     done
 
-    echo "add_subdirectory ( ${main_target_dirname} )" >> ${OFN}
+    echo "add_subdirectory ( ${main_target_dirname} \${CMAKE_CURRENT_BINARY_DIR}/${main_target_name} )" >> ${OFN}
 
     local -a array_library=$(printf "%s\n" "${UPP_ALL_USES_DONE[@]}" | sort -u | sed 's#/#_#g');
     local library_dep="${main_target_name}${LIB_SUFFIX};"
