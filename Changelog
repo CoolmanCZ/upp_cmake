@@ -1,3 +1,8 @@
+2017-03-09 16:57:05 +0100 - a675f09 : import.ext file support, set compiler flag to -std=c++14
+2017-03-09 08:57:29 +0100 - 43a1fda : Batch processing support
+2016-11-22 15:09:29 +0100 - bdfb19d : Script to create distribution package
+2016-11-21 13:47:09 +0100 - 8e03728 : Don't use UPP HEAP with MSVC
+2016-10-04 08:06:03 +0200 - 587e8f1 : Changelog update
 2016-10-04 08:05:34 +0200 - 2981212 : Small improvement
 2016-09-26 09:32:55 +0200 - b9b5aba : Add environment install and maintenance scripts
 2016-09-20 12:17:21 +0200 - fdafe78 : Changelog update
