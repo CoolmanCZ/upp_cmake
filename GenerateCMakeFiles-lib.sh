@@ -697,6 +697,9 @@ generate_cmake_from_upp()
 
         # _start: 0 = not in the block, 1 = in the block, 2 = in the block with the end, -1 = block done
         while read line; do
+            # Remove DOS line ending
+            line=`echo ${line} | sed $'s/\r$//'`
+
             # Parse compiler options
             if [[ ${line} =~ $RE_USES ]]; then
                 list_parse "${line}" ${target_name}_${DEPEND_LIST}
@@ -934,13 +937,13 @@ generate_cmake_from_upp()
             done
         fi
 
-        echo >> ${OFN}
-        echo '# icpp files processing' >> ${OFN}
-        echo "foreach ( icppFile \${$SOURCE_LIST_ICPP} )" >> ${OFN}
-        echo '  set ( output_file "${CMAKE_CURRENT_BINARY_DIR}/${icppFile}.cpp" )' >> ${OFN}
-        echo '  file ( WRITE "${output_file}" "#include \"${CMAKE_CURRENT_SOURCE_DIR}/${icppFile}\"\n" )' >> ${OFN}
-        echo "  list ( APPEND ${SOURCE_LIST_CPP} \${output_file} )" >> ${OFN}
-        echo 'endforeach()' >> ${OFN}
+#        echo >> ${OFN}
+#        echo '# icpp files processing' >> ${OFN}
+#        echo "foreach ( icppFile \${$SOURCE_LIST_ICPP} )" >> ${OFN}
+#        echo '  set ( output_file "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/${icppFile}.cpp" )' >> ${OFN}
+#        echo '  file ( WRITE "${output_file}" "#include \"${CMAKE_CURRENT_SOURCE_DIR}/${icppFile}\"\n" )' >> ${OFN}
+#        echo "  list ( APPEND ${SOURCE_LIST_CPP} \${output_file} )" >> ${OFN}
+#        echo 'endforeach()' >> ${OFN}
 
         echo >> ${OFN}
         echo "# Module properties" >> ${OFN}
@@ -1076,6 +1079,7 @@ generate_package_file()
 {
     if [ -z "${PROJECT_NAME}" ]; then
         echo "ERROR - Variable \$PROJECT_NAME is not defined! Can't create archive package!"
+        exit 1
     else
         echo -n "Creating archive "
 
@@ -1145,14 +1149,25 @@ generate_main_cmake_file()
     # Begin of the cat (CMakeFiles.txt)
     cat >> ${OFN} << EOL
 
+# Overwrite cmake verbose makefile output
+# (e.g. do not generate cmake verbose makefile output even when the debug flag is set)
+# not set - do not overwrite settings
+# 0 - do not generate cmake verbose makefile output
+# 1 - always generate cmake verbose makefile output
+set ( CMAKE_VERBOSE_OVERWRITE ${CMAKE_VERBOSE_OVERWRITE} )
+
+# Project name
+project ( ${main_target_name} )
+
 # Set the project common path
 set ( UPP_SOURCE_DIRECTORY ${UPP_SRC_DIR} )
+set ( UPP_EXTRA_INCLUDE ${EXTRA_INCLUDE_DIR} )
 set ( PROJECT_INC_DIR \${PROJECT_BINARY_DIR}/inc )
 set ( PROJECT_PCH_DIR \${PROJECT_BINARY_DIR}/pch )
 
 # Set the default include directory for the whole project
 include_directories ( BEFORE \${UPP_SOURCE_DIRECTORY} )
-include_directories ( BEFORE \${PROJECT_INC_DIR} )
+include_directories ( BEFORE \${PROJECT_INC_DIR} \${UPP_EXTRA_INCLUDE} )
 include_directories ( BEFORE \${CMAKE_CURRENT_SOURCE_DIR} )
 
 # Set the default path for built executables to the bin directory
@@ -1329,6 +1344,10 @@ else()
 
 endif()
 message ( STATUS "Build type: " \${CMAKE_BUILD_TYPE} )
+
+if ( CMAKE_VERBOSE_OVERWRITE EQUAL 0 OR CMAKE_VERBOSE_OVERWRITE EQUAL 1 )
+  set ( CMAKE_VERBOSE_MAKEFILE \${CMAKE_VERBOSE_OVERWRITE} )
+endif()
 
 if ( "\${FlagDefs}" MATCHES "flagDEBUG_MINIMAL" )
   if ( NOT MINGW )
@@ -1565,7 +1584,7 @@ endfunction()
 function ( create_cpps_from_icpps )
   file ( GLOB icpp_files RELATIVE "\${CMAKE_CURRENT_SOURCE_DIR}" "\${CMAKE_CURRENT_SOURCE_DIR}/*.icpp" )
   foreach ( icppFile \${icpp_files} )
-      set ( output_file "\${CMAKE_CURRENT_BINARY_DIR}/\${icppFile}.cpp" )
+      set ( output_file "\${CMAKE_CURRENT_BINARY_DIR}/\${PROJECT_NAME}/\${icppFile}.cpp" )
       file ( WRITE "\${output_file}" "#include \"\${CMAKE_CURRENT_SOURCE_DIR}/\${icppFile}\"\n" )
   endforeach()
 endfunction()
@@ -1691,7 +1710,7 @@ else()
 endif()
 
 # Collect icpp files
-file ( GLOB_RECURSE cpp_ini_files "\${CMAKE_CURRENT_BINARY_DIR}/../*.icpp.cpp" )
+file ( GLOB_RECURSE cpp_ini_files "\${CMAKE_CURRENT_BINARY_DIR}/\${PROJECT_NAME}/*.icpp.cpp" )
 
 # Collect windows resource config file
 if ( WIN32 )
@@ -1716,7 +1735,7 @@ else()
 endif()
 
 # Main program dependecies
-set ( ${main_target_name}_${DEPEND_LIST} "${library_dep}" )
+set ( ${main_target_name}_${DEPEND_LIST} "${library_dep/Core-lib;Core_SSL-lib/Core_SSL-lib;Core-lib}" )
 
 add_dependencies ( ${main_target_name}${BIN_SUFFIX} \${${main_target_name}_${DEPEND_LIST}})
 if ( DEFINED MAIN_TARGET_LINK_FLAGS )
@@ -1763,5 +1782,8 @@ EOL
     if [ "${GENERATE_PACKAGE}" == "1" ]; then
         generate_package_file
     fi
+
+    UPP_ALL_USES=()
+    UPP_ALL_USES_DONE=()
 }
 

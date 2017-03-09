@@ -19,6 +19,9 @@ Using of the script is demonstrated in the example.sh, where you should change t
 * GENERATE_NOT_PARALLEL - set to "1" - do not build with multiple processes (multiple process build is enabled as default)
 * GENERATE_NOT_PCH - set to "1" - do not build with precompiled headers support (precompiled headers support is enabled as default)
 
+* CMAKE_VERBOSE_OVERWRITE="0" - set to "0" - do not generate cmake verbose makefile output (even when the debug flag is set)
+* CMAKE_VERBOSE_OVERWRITE="1" - set to "1" - always generate cmake verbose makefile output
+
 ## Usage
 Parameters of the "generate_main_cmake_file" function are
 ```
@@ -36,9 +39,9 @@ generate_main_cmake_file <${PROJECT_NAME}> [${PROJECT_FLAGS}]
 - Create a distribution package
 - Build shared libraries as the target (DLL, SO)
 - Precompiled headers (PCH) (for GCC 4.9+, Clang 3.5+)
+- Batch processing support
 
 ## Limitation
-- Ultimate++ source tree and directory of the project should be in the same directory as the generator scripts during build (you can use symlinks)
 - Some options are not taken into account when generating CMakeLists (static_library, file depends)
 
 ## TODO

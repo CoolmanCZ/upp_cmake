@@ -32,6 +32,10 @@ GENERATE_PACKAGE="1"        # set to "1" - create a tarball package of the proje
 #GENERATE_NOT_C11="1"        # set to "1" - do not use compiler flag -std=c++11 (flag is enabled as default)
 #GENERATE_NOT_PARALLEL="1"   # set to "1" - do not build with multiple processes (parralel build is enabled as default)
 #GENERATE_NOT_PCH="1"        # set to "1" - do not build with precompiled header support (precompiled header support is enabled as default)
+#CMAKE_NOT_VEBOSE="1"        # set to "1" - do not generate cmake verbose output even when the debug flag is set
+
+#CMAKE_VERBOSE_OVERWRITE="0" # set to "0" - do not generate cmake verbose makefile output (even when the debug flag is set)
+#CMAKE_VERBOSE_OVERWRITE="1" # set to "1" - always generate cmake verbose makefile output
 
 UPP_SRC_BASE="upp-x11-src-2016-07-11"
 UPP_SRC_DIR="${UPP_SRC_BASE}/uppsrc"
