@@ -15,7 +15,7 @@ Using of the script is demonstrated in the example.sh, where you should change t
 * GENERATE_VERBOSE - set to "1" - enable additional output during script processing on the screen
 * GENERATE_DEBUG - set to "1" - enable debug output during script processing on the screen
 * GENERATE_PACKAGE- set to "1" - create a tarball package of the project
-* GENERATE_NOT_C11 - set to "1" - do not use compiler flag -std=c++11 (flag is enabled as default)
+* GENERATE_NOT_Cxx - set to "1" - do not use compiler -std=c++14 parameter (compiler parameter is enabled as default)
 * GENERATE_NOT_PARALLEL - set to "1" - do not build with multiple processes (multiple process build is enabled as default)
 * GENERATE_NOT_PCH - set to "1" - do not build with precompiled headers support (precompiled headers support is enabled as default)
 
@@ -40,6 +40,7 @@ generate_main_cmake_file <${PROJECT_NAME}> [${PROJECT_FLAGS}]
 - Build shared libraries as the target (DLL, SO)
 - Precompiled headers (PCH) (for GCC 4.9+, Clang 3.5+)
 - Batch processing support
+- import.ext file support
 
 ## Limitation
 - Some options are not taken into account when generating CMakeLists (static_library, file depends)
@@ -57,7 +58,7 @@ Build and configuration flags, that are taken into account by the GenerateCMakeF
 - 'empty' - the flag is not used / set by the script
 
 Script set and using new flags (can be disabled by configuration parameters)
-* flagGNUC11 - set compiler flag -std=c++11
+* flagGNUC14 - set compiler flag -std=c++14
 * flagMP - enable multiple process build (MSVC)
 * flagPCH - use precompiled headers during build (only GCC and Clang are supported now)
 

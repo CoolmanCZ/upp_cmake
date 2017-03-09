@@ -64,6 +64,9 @@ RE_DEPEND='^uses$'
 RE_FILES='^file$'
 RE_MAINCONFIG='^mainconfig'
 RE_SEPARATOR='separator'
+RE_IMPORT='import.ext'
+RE_IMPORT_ADD='^files|^includes'
+RE_IMPORT_DEL='^exclude'
 RE_FILE_DOT='\.'
 RE_FILE_SPLIT='(options|charset|optimize_speed|highlight)'
 RE_FILE_EXCLUDE='(depends\(\))'
@@ -645,6 +648,99 @@ binary_resource_parse()
     fi
 }
 
+import_ext_parse()
+{
+    local parse_file="$(string_remove_comma ${1})"
+    local lines=""
+    local files_add=0
+    local files_del=0
+    local added_files=()
+    local excluded_files=()
+    local result=()
+
+    mapfile -t lines < ${parse_file}
+
+    for line in "${lines[@]}"; do
+        # Remove DOS line ending
+        line=`echo ${line} | sed $'s/\r$//'`
+
+        # Begin of the add section
+        if [[ ${line} =~ $RE_IMPORT_ADD ]]; then
+            files_add=1
+        fi
+
+        # Begin of the del section
+        if [[ ${line} =~ $RE_IMPORT_DEl ]]; then
+            files_del=1
+        fi
+
+        if [ ${files_add} -gt 0 ]; then
+            # End of the add section (line with ';')
+            if [[ ${line} =~ ';' ]]; then
+                files_add=2
+            fi
+
+            # Remove ',' and ';'
+            line=${line//,}
+            line=${line//;}
+
+            # Convert line to array
+            read -a line_array <<< ${line}
+            for list in "${line_array[@]}"; do
+                list=${list//,}
+                list=${list//;}
+                if [[ ! ${list} =~ $RE_IMPORT_ADD ]]; then
+                    if [[ ${list} =~ "*" ]]; then
+                        added_files+=($(find -name ${list}))
+                    else
+                        added_files+=($(find -nowarn -samefile ${list} 2>/dev/null))
+                    fi
+                fi
+            done
+
+            if [ ${files_add} -eq 2 ]; then
+                files_add=-1
+            fi
+        fi
+
+        if [ ${files_del} -gt 0 ]; then
+            # End of the del section (line with ';')
+            if [ ${files_del} -gt 0 ] && [[ ${line} =~ ';' ]]; then
+                files_del=2
+            fi
+
+            # Remove ',' and ';'
+            line=${line//,}
+            line=${line//;}
+
+            # Convert line to array
+            read -a line_array <<< ${line}
+            for list in "${line_array[@]}"; do
+                list=${list//,}
+                list=${list//;}
+                if [[ ! ${list} =~ $RE_IMPORT_DEl ]]; then
+                    if [[ ${list} =~ "*" ]]; then
+                        excluded_files+=($(find -name ${list}))
+                    else
+                        excluded_files+=($(find -samefile ${list} 2>/dev/null))
+                    fi
+                fi
+            done
+
+            if [ ${files_del} -eq 2 ]; then
+                files_del=-1
+            fi
+        fi
+    done
+
+    for value in "${added_files[@]}"; do
+        if [[ ! " ${excluded_files[@]} " =~ " ${value} " ]]; then
+            result+=(${value})
+        fi
+    done
+    echo ${result[@]}
+}
+
 generate_cmake_header()
 {
     cat > ${OFN} << EOL
@@ -691,6 +787,7 @@ generate_cmake_from_upp()
     local list=""
     local line=""
     local line_array=()
+    local dir_array=()
 
     if [ -f "${upp_ext}" ]; then
         local target_name="$(string_replace_dash "${object_name}")"
@@ -784,7 +881,13 @@ generate_cmake_from_upp()
                     line="${line// */}"
                 fi
 
-                line_array=(${line})
+                if [[ ${line} =~ $RE_IMPORT ]]; then
+                    line_array=($(import_ext_parse ${line}))
+                    dir_array=($(dirname ${line_array[@]} | sort -u))
+                else
+                    read -a line_array <<< ${line}
+                fi
+
                 for list in "${line_array[@]}"; do
                     list=${list//,}
                     list=${list//;}
@@ -818,7 +921,7 @@ generate_cmake_from_upp()
                         fi
                     fi
                 done
-                if [ $files_start -eq 2 ]; then
+                if [ ${files_start} -eq 2 ]; then
                     files_start=-1
                 fi
             fi
@@ -856,6 +959,18 @@ generate_cmake_from_upp()
             fi
 
         done < <(sed 's#\\#/#g' "${upp_ext}")
+
+        # Create include directory list
+        if [ -n "${dir_array}" ]; then
+            echo >> ${OFN}
+            echo "include_directories ( " >> ${OFN}
+            for list in "${dir_array[@]}"; do
+                if [[ " ${list} " != " . " ]]; then
+                    echo "      ${list}" >> ${OFN}
+                fi
+            done
+            echo ")" >> ${OFN}
+        fi
 
         # Create project option definitions
         if [ -n "${OPTIONS}" ] ; then
@@ -1127,8 +1242,8 @@ generate_main_cmake_file()
 
     generate_cmake_header
 
-    if [ -z "${GENERATE_NOT_C11}" ] || [ "${GENERATE_NOT_C11}" != "1" ]; then
-        main_definitions+=" -DflagGNUC11"
+    if [ -z "${GENERATE_NOT_Cxx}" ] || [ "${GENERATE_NOT_Cxx}" != "1" ]; then
+        main_definitions+=" -DflagGNUC14"
     fi
 
     if [ -z "${GENERATE_NOT_PARALLEL}" ] || [ "${GENERATE_NOT_PARALLEL}" != "1" ]; then
@@ -1214,8 +1329,8 @@ get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 
 # Set GCC builder flag
 if ( CMAKE_COMPILER_IS_GNUCC )
-  if ( "\${FlagDefs}" MATCHES "flagGNUC11(;|$)" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 )
-    message ( FATAL_ERROR "GNU GCC version 4.9+ is required to use -std=c++11 parameter!" )
+  if ( "\${FlagDefs}" MATCHES "flagGNUC14(;|$)" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 )
+    message ( FATAL_ERROR "GNU GCC version 4.9+ is required to use -std=c++14 parameter!" )
   endif()
 
   remove_definitions ( -DflagMSC )
@@ -1430,8 +1545,8 @@ endif()
 
 # Set compiler options
 if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
-  if ( "\${FlagDefs}" MATCHES "flagGNUC11" )
-    set ( EXTRA_GXX_FLAGS "\${EXTRA_GXX_FLAGS} -std=c++11" )
+  if ( "\${FlagDefs}" MATCHES "flagGNUC14" )
+    set ( EXTRA_GXX_FLAGS "\${EXTRA_GXX_FLAGS} -std=c++14" )
   endif()
 
   if ( MINGW )
@@ -1682,6 +1797,11 @@ EOL
         library_dep+="${list_library}${LIB_SUFFIX};"
     done
 
+    # Link dependecy correction
+    library_dep="${library_dep/Core-lib;Core_SSL-lib/Core_SSL-lib;Core-lib}"
+    library_dep="${library_dep//plugin_zstd-lib}"
+    library_dep="${library_dep/ZstdTest-lib/ZstdTest-lib;plugin_zstd-lib}"
+
     # Begin of the cat (CMakeFiles.txt)
     cat >> ${OFN} << EOL
 
@@ -1735,7 +1855,7 @@ else()
 endif()
 
 # Main program dependecies
-set ( ${main_target_name}_${DEPEND_LIST} "${library_dep/Core-lib;Core_SSL-lib/Core_SSL-lib;Core-lib}" )
+set ( ${main_target_name}_${DEPEND_LIST} "${library_dep}" )
 
 add_dependencies ( ${main_target_name}${BIN_SUFFIX} \${${main_target_name}_${DEPEND_LIST}})
 if ( DEFINED MAIN_TARGET_LINK_FLAGS )
