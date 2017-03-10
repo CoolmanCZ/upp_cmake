@@ -476,14 +476,21 @@ if_options_builder()
 binary_resource_parse()
 {
     local parse_file="${1}"
-    local line=""
     local binary_array_first_def=""
     local binary_mask_first_def=""
 
     if [ -n "${parse_file}" ] && [ -f "${parse_file}" ]; then
+        local line=""
+        local -a lines
         local -a binary_array_names
         local -a binary_array_names_library
-        while read line; do
+
+        mapfile -t lines < ${parse_file}
+
+        for line in "${lines[@]}"; do
+            # Remove DOS line ending
+            line=`echo ${line} | sed $'s/\r$//'`
+
             if [ -n "${line}" ]; then
                 local parameter="$(string_get_before_parenthesis "${line}")"
                 parameter="$(string_trim_spaces_both "${parameter}")"
@@ -510,6 +517,7 @@ binary_resource_parse()
 
                     echo >> ${OFN}
                     echo "# BINARY file" >> ${OFN}
+                    echo "message ( STATUS \"Create source for the binary file: \" ${symbol_file_name} )" >> ${OFN}
                     echo "create_brc_source ( ${symbol_file_name} ${symbol_name}.cpp ${symbol_name} ${symbol_file_compress} write )" >> ${OFN}
                     echo "set_source_files_properties ( \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp PROPERTIES GENERATED TRUE )" >> ${OFN}
                     echo "list ( APPEND ${SOURCE_LIST_CPP} \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp )" >> ${OFN}
@@ -527,7 +535,9 @@ binary_resource_parse()
 
                     echo >> ${OFN}
                     echo "# BINARY_ARRAY file" >> ${OFN}
+                    echo "message ( STATUS \"Create source for the binary file: \" ${symbol_file_name} )" >> ${OFN}
                     echo "create_brc_source ( ${symbol_file_name} binary_array.cpp ${symbol_name}_${symbol_name_array} ${symbol_file_compress} ${file_creation} )" >> ${OFN}
+
                 # parse BINARY_MASK resources
                 elif [ "${parameter}" == "BINARY_MASK" ]; then
 
@@ -549,6 +559,7 @@ binary_resource_parse()
 
                                 echo >> ${OFN}
                                 echo "# BINARY_MASK file" >> ${OFN}
+                                echo "message ( STATUS \"Create source for the binary file: \" ${binary_file} )" >> ${OFN}
                                 echo "create_brc_source ( ${binary_file} ${symbol_name}.cpp ${symbol_name}_${all_count} ${symbol_file_compress} ${file_creation} )" >> ${OFN}
 
                                 all_array_files+=("$(basename "${binary_file}")")
@@ -593,7 +604,7 @@ binary_resource_parse()
 
                 fi # BINARY end
             fi
-        done < "${parse_file}"
+        done
 
         # Generate cpp file for the BINARY_ARRAY
         if [ -n "${binary_array_names}" ]; then
@@ -651,12 +662,13 @@ binary_resource_parse()
 import_ext_parse()
 {
     local parse_file="$(string_remove_comma ${1})"
-    local lines=""
     local files_add=0
     local files_del=0
-    local added_files=()
-    local excluded_files=()
-    local result=()
+    local line=""
+    local -a lines
+    local -a added_files
+    local -a excluded_files
+    local -a result
 
     mapfile -t lines < ${parse_file}
 
@@ -1743,13 +1755,12 @@ function ( create_brc_source input_file output_file symbol_name compression symb
   math ( EXPR FILE_LENGTH "\${CUR_LENGTH} / 2" )
   set ( \${hex_string} 0)
 
+  string ( REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\\\1, " hex_converted \${hex_string} )
+  string ( REGEX REPLACE ", $" "" hex_converted \${hex_converted} )
+
   set ( output_string "static unsigned char \${symbol_name}_[] = {\n" )
-  while ( CUR_INDEX LESS CUR_LENGTH )
-      string ( SUBSTRING "\${hex_string}" \${CUR_INDEX} 2 CHAR )
-      set ( output_string "\${output_string} 0x\${CHAR}," )
-      math ( EXPR CUR_INDEX "\${CUR_INDEX} + 2" )
-  endwhile()
-  set ( output_string "\${output_string} 0x00 }\;\n\n" )
+  set ( output_string "\${output_string} \${hex_converted}" )
+  set ( output_string "\${output_string}, 0x00 }\;\n\n" )
   set ( output_string "\${output_string}unsigned char *\${symbol_name} = \${symbol_name}_\;\n\n" )
   set ( output_string "\${output_string}int \${symbol_name}_length = \${FILE_LENGTH}\;\n\n" )
 
@@ -1769,6 +1780,8 @@ endforeach()
 EOL
 # End of the cat (CMakeFiles.txt)
 
+    local PKG_DIR=""
+
     echo '# Include dependent directories of the project' >> ${OFN}
     while [ ${#UPP_ALL_USES_DONE[@]} -lt ${#UPP_ALL_USES[@]} ]; do
         local process_upp=$(get_upp_to_process)
@@ -1777,13 +1790,24 @@ EOL
 #        echo "process_upp=\"${process_upp}\""
 
         if [ -n "${process_upp}" ]; then
-            if [[ ${process_upp} =~ '/' ]]; then
-                tmp_upp_name="$(basename ${process_upp}).upp"
-                generate_cmake_file ${UPP_SRC_DIR}/${process_upp}/${tmp_upp_name} "${process_upp}"
+            if [ -d ${UPP_SRC_DIR}/${process_upp} ]; then
+                PKG_DIR=${UPP_SRC_DIR}
+            elif [ -d ${EXTRA_INCLUDE_DIR}/${process_upp} ]; then
+                PKG_DIR=${EXTRA_INCLUDE_DIR}
             else
-                generate_cmake_file ${UPP_SRC_DIR}/${process_upp}/${process_upp}.upp "${process_upp}"
+                pkg_DIR=""
             fi
-            echo "add_subdirectory ( ${UPP_SRC_DIR}/${process_upp} \${CMAKE_CURRENT_BINARY_DIR}/${process_upp} )" >> ${OFN}
+
+            if [ -d ${PKG_DIR}/${process_upp} ]; then
+                if [[ ${process_upp} =~ '/' ]]; then
+                    tmp_upp_name="$(basename ${process_upp}).upp"
+                    generate_cmake_file ${PKG_DIR}/${process_upp}/${tmp_upp_name} "${process_upp}"
+                else
+                    generate_cmake_file ${PKG_DIR}/${process_upp}/${process_upp}.upp "${process_upp}"
+                fi
+
+                echo "add_subdirectory ( ${PKG_DIR}/${process_upp} \${CMAKE_CURRENT_BINARY_DIR}/${process_upp} )" >> ${OFN}
+            fi
         fi
 
         UPP_ALL_USES_DONE+=("${process_upp}")
@@ -1799,6 +1823,7 @@ EOL
 
     # Link dependecy correction
     library_dep="${library_dep/Core-lib;Core_SSL-lib/Core_SSL-lib;Core-lib}"
+    library_dep="${library_dep/Core-lib;Core_Rpc-lib/Core_Rpc-lib;Core-lib}"
     library_dep="${library_dep//plugin_zstd-lib}"
     library_dep="${library_dep/ZstdTest-lib/ZstdTest-lib;plugin_zstd-lib}"
 
@@ -1857,7 +1882,7 @@ endif()
 # Main program dependecies
 set ( ${main_target_name}_${DEPEND_LIST} "${library_dep}" )
 
-add_dependencies ( ${main_target_name}${BIN_SUFFIX} \${${main_target_name}_${DEPEND_LIST}})
+add_dependencies ( ${main_target_name}${BIN_SUFFIX} \${${main_target_name}_${DEPEND_LIST}} )
 if ( DEFINED MAIN_TARGET_LINK_FLAGS )
   set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES LINK_FLAGS \${MAIN_TARGET_LINK_FLAGS} )
 endif()

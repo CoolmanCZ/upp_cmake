@@ -12,6 +12,8 @@ Using of the script is demonstrated in the example.sh, where you should change t
 * PROJECT_FLAGS - build flags
 
 ### Optional configuration parameters
+* EXTRA_INCLUDE_DIR - directory path which can be added as a system include path
+
 * GENERATE_VERBOSE - set to "1" - enable additional output during script processing on the screen
 * GENERATE_DEBUG - set to "1" - enable debug output during script processing on the screen
 * GENERATE_PACKAGE- set to "1" - create a tarball package of the project
@@ -29,7 +31,7 @@ generate_main_cmake_file <${PROJECT_NAME}> [${PROJECT_FLAGS}]
 ```
 
 ## Support
-- New Core with C++11 build (require GCC 4.9+)
+- New Core with C++14 build (require GCC 4.9+)
 - Release or debug build
 - Binary resource support (BINARY, BINARY_MASK, BINARY_ARRAY)
 - Cross compile support (require MINGW GCC 4.9+)
