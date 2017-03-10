@@ -541,7 +541,7 @@ binary_resource_parse()
                 # parse BINARY_MASK resources
                 elif [ "${parameter}" == "BINARY_MASK" ]; then
 
-                    local -a binary_mask_files="($(eval echo "${symbol_file_name}"))"
+                    local -a binary_mask_files=($(eval echo "${symbol_file_name}"))
 
                     if [ -n "${binary_mask_files}" ]; then
                         local all_count=0
