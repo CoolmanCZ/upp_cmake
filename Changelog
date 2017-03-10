@@ -1,4 +1,6 @@
-2017-03-10 20:45:22 +0100 - 8a1d0ef : Binary resource file processing improvement
+2017-03-10 21:23:27 +0100 - d6d6a9f : Remove unnecessary regex
+2017-03-10 21:22:12 +0100 - e1dbea4 : Small update
+2017-03-10 20:45:22 +0100 - babc193 : Binary resource file processing improvement
 2017-03-09 16:59:02 +0100 - 6d99ae3 : Merge branch 'master' of https://github.com/CoolmanCZ/upp_cmake
 2017-03-09 16:57:56 +0100 - 5a1001d : Changelog update
 2017-03-09 16:57:05 +0100 - a675f09 : import.ext file support, set compiler flag to -std=c++14

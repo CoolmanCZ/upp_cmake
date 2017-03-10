@@ -1756,11 +1756,10 @@ function ( create_brc_source input_file output_file symbol_name compression symb
   set ( \${hex_string} 0)
 
   string ( REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\\\1, " hex_converted \${hex_string} )
-  string ( REGEX REPLACE ", $" "" hex_converted \${hex_converted} )
 
   set ( output_string "static unsigned char \${symbol_name}_[] = {\n" )
   set ( output_string "\${output_string} \${hex_converted}" )
-  set ( output_string "\${output_string}, 0x00 }\;\n\n" )
+  set ( output_string "\${output_string}0x00 }\;\n\n" )
   set ( output_string "\${output_string}unsigned char *\${symbol_name} = \${symbol_name}_\;\n\n" )
   set ( output_string "\${output_string}int \${symbol_name}_length = \${FILE_LENGTH}\;\n\n" )
 
