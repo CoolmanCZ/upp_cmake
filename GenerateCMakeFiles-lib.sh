@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2016 Radek Malcic
+# Copyright (C) 2016-2017 Radek Malcic
 #
 # All rights reserved.
 #
@@ -517,7 +517,6 @@ binary_resource_parse()
 
                     echo >> ${OFN}
                     echo "# BINARY file" >> ${OFN}
-                    echo "message ( STATUS \"Create source for the binary file: \" ${symbol_file_name} )" >> ${OFN}
                     echo "create_brc_source ( ${symbol_file_name} ${symbol_name}.cpp ${symbol_name} ${symbol_file_compress} write )" >> ${OFN}
                     echo "set_source_files_properties ( \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp PROPERTIES GENERATED TRUE )" >> ${OFN}
                     echo "list ( APPEND ${SOURCE_LIST_CPP} \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp )" >> ${OFN}
@@ -535,7 +534,6 @@ binary_resource_parse()
 
                     echo >> ${OFN}
                     echo "# BINARY_ARRAY file" >> ${OFN}
-                    echo "message ( STATUS \"Create source for the binary file: \" ${symbol_file_name} )" >> ${OFN}
                     echo "create_brc_source ( ${symbol_file_name} binary_array.cpp ${symbol_name}_${symbol_name_array} ${symbol_file_compress} ${file_creation} )" >> ${OFN}
 
                 # parse BINARY_MASK resources
@@ -559,7 +557,6 @@ binary_resource_parse()
 
                                 echo >> ${OFN}
                                 echo "# BINARY_MASK file" >> ${OFN}
-                                echo "message ( STATUS \"Create source for the binary file: \" ${binary_file} )" >> ${OFN}
                                 echo "create_brc_source ( ${binary_file} ${symbol_name}.cpp ${symbol_name}_${all_count} ${symbol_file_compress} ${file_creation} )" >> ${OFN}
 
                                 all_array_files+=("$(basename "${binary_file}")")
@@ -1721,6 +1718,7 @@ function ( create_brc_source input_file output_file symbol_name compression symb
   if ( NOT EXISTS \${CMAKE_CURRENT_SOURCE_DIR}/\${input_file} )
       message ( FATAL_ERROR "Input file does not exist: \${CMAKE_CURRENT_SOURCE_DIR}/\${input_file}" )
   endif()
+  message ( STATUS "Creating cpp source file from the binary resource: \${input_file}" )
 
   file ( REMOVE \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name} )
 
@@ -1758,8 +1756,7 @@ function ( create_brc_source input_file output_file symbol_name compression symb
   string ( REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\\\1, " hex_converted \${hex_string} )
 
   set ( output_string "static unsigned char \${symbol_name}_[] = {\n" )
-  set ( output_string "\${output_string} \${hex_converted}" )
-  set ( output_string "\${output_string}0x00 }\;\n\n" )
+  set ( output_string "\${output_string} \${hex_converted}0x00 }\;\n\n" )
   set ( output_string "\${output_string}unsigned char *\${symbol_name} = \${symbol_name}_\;\n\n" )
   set ( output_string "\${output_string}int \${symbol_name}_length = \${FILE_LENGTH}\;\n\n" )
 
