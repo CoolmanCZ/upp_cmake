@@ -605,11 +605,7 @@ binary_resource_parse()
 
         # Generate cpp file for the BINARY_ARRAY
         if [ -n "${binary_array_names}" ]; then
-            local -a binary_array_names_sorted
-            OLD_IFS="${IFS}"; export LC_ALL=C; IFS=$'\n' binary_array_names_sorted=($(sort -u <<<"${binary_array_names[*]}")); IFS="${OLD_IFS}"
-
 #           echo "# ${binary_array_names[@]}" >> ${OFN}
-#           echo "# ${binary_array_names_sorted[@]}" >> ${OFN}
 
             local test_first_iteration
             local binary_array_name_count=0
@@ -618,11 +614,11 @@ binary_resource_parse()
             local binary_array_name_second
 
             echo >> ${OFN}
-            echo "# Append additional information of the BINARY_ARRAY binary resource (${symbol_name})" >> ${OFN}
+            echo "# Append additional information of the BINARY_ARRAY binary resource" >> ${OFN}
             echo "file ( APPEND \${CMAKE_CURRENT_BINARY_DIR}/binary_array.cpp \"" >> ${OFN}
 
-            for binary_array_record in "${binary_array_names_sorted[@]}"; do
-                binary_array_name_split=(${binary_array_record//_/ })
+            for binary_array_record in "${binary_array_names[@]}"; do
+                binary_array_name_split=(${binary_array_record//_[0-9]/ })
                 if [ ! "${binary_array_name_split[0]}" == "${binary_array_name_test}" ]; then
                     if [ -z ${test_first_iteration} ]; then
                         test_first_iteration="done"
@@ -1718,7 +1714,7 @@ function ( create_brc_source input_file output_file symbol_name compression symb
   if ( NOT EXISTS \${CMAKE_CURRENT_SOURCE_DIR}/\${input_file} )
       message ( FATAL_ERROR "Input file does not exist: \${CMAKE_CURRENT_SOURCE_DIR}/\${input_file}" )
   endif()
-  message ( STATUS "Creating cpp source file from the binary resource: \${input_file}" )
+  message ( STATUS "Creating cpp source file \"\${output_file}\" from the binary resource \"\${input_file}\"" )
 
   file ( REMOVE \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name} )
 
@@ -1736,6 +1732,27 @@ function ( create_brc_source input_file output_file symbol_name compression symb
       endif()
       set ( COMPRESS_SUFFIX "zip" )
       set ( COMMAND_COMPRESS \${ZIP_EXEC} \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name}.\${COMPRESS_SUFFIX} \${symbol_name} )
+  elseif ( \${compression} MATCHES "[lL][zZ][mM][aA]" )
+      find_program ( LZMA_EXEC lzma )
+      if ( NOT LZMA_EXEC )
+          message ( FATAL_ERROR "LZMA executable not found!" )
+      endif()
+      set ( COMPRESS_SUFFIX "lzma" )
+      set ( COMMAND_COMPRESS \${LZMA_EXEC} \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name} )
+  elseif ( \${compression} MATCHES "[lL][zZ]4" )
+      find_program ( LZ4_EXEC lz4c )
+      if ( NOT LZ4_EXEC )
+          message ( FATAL_ERROR "LZ4 executable not found!" )
+      endif()
+      set ( COMPRESS_SUFFIX "lz4" )
+      set ( COMMAND_COMPRESS \${LZ4_EXEC} -f \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name} \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name}.\${COMPRESS_SUFFIX} )
+  elseif ( \${compression} MATCHES "[zZ][sS][tT[dD]" )
+      find_program ( ZSTD_EXEC zstd )
+      if ( NOT ZSTD_EXEC )
+          message ( FATAL_ERROR "ZSTD executable not found!" )
+      endif()
+      set ( COMPRESS_SUFFIX "zst" )
+      set ( COMMAND_COMPRESS \${ZSTD_EXEC} \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name} -o \${CMAKE_CURRENT_BINARY_DIR}/\${symbol_name}.\${COMPRESS_SUFFIX} )
   endif()
 
   file ( COPY \${CMAKE_CURRENT_SOURCE_DIR}/\${input_file} DESTINATION \${CMAKE_CURRENT_BINARY_DIR} )
