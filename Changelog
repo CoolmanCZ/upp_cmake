@@ -1,4 +1,6 @@
-2017-05-03 15:03:12 +0200 -         : Support new brc compression methods
+2017-07-10 09:19:55 +0200 -         : Add missing endif()
+2017-07-10 08:45:33 +0200 - 1527390 : Add support for VS 15.0
+2017-05-03 15:03:12 +0200 - 9b2c0cd : Support new brc compression methods
 2017-03-11 10:44:49 +0100 - 0f836fd : Cosmetics
 2017-03-10 21:58:37 +0100 - 993618f : Remove wrong quotation marks
 2017-03-10 21:23:27 +0100 - 5ddc867 : Remove unnecessary regex

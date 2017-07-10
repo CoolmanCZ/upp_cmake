@@ -1559,6 +1559,7 @@ if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
 
   if ( CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.8 OR CMAKE_COMPILER_IS_CLANG )
       set ( EXTRA_GXX_FLAGSS "\${EXTRA_GXX_FLAGS} -fdiagnostics-color")
+  endif()
 
   if ( MINGW )
       get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
