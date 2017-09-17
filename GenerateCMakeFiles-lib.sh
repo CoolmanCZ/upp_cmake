@@ -1557,7 +1557,7 @@ if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
     set ( EXTRA_GXX_FLAGS "\${EXTRA_GXX_FLAGS} -std=c++14" )
   endif()
 
-  if ( CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.8 OR CMAKE_COMPILER_IS_CLANG )
+  if ( CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 OR CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 4.9 OR CMAKE_COMPILER_IS_CLANG )
       set ( EXTRA_GXX_FLAGSS "\${EXTRA_GXX_FLAGS} -fdiagnostics-color")
   endif()
 
@@ -1875,7 +1875,7 @@ else()
 endif()
 
 # Collect icpp files
-file ( GLOB_RECURSE cpp_ini_files "\${CMAKE_CURRENT_BINARY_DIR}/\${PROJECT_NAME}/*.icpp.cpp" )
+file ( GLOB_RECURSE cpp_ini_files "\${CMAKE_CURRENT_BINARY_DIR}/*.icpp.cpp" )
 
 # Collect windows resource config file
 if ( WIN32 )
