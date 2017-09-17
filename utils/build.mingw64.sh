@@ -9,7 +9,7 @@ fi
 mkdir -p $BUILD_DIR
 
 cd $BUILD_DIR
-cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain-mingw64.cmake .. && gmake -j 4
+cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain-mingw64.cmake .. && make -j 4
 
 DUR=$(echo "$(date +%s.%N) - ${START}" | bc)
 echo "Execution time: $(date -d@0${DUR} -u +%H:%M:%S.%N)"

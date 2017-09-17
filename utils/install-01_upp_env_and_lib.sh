@@ -20,7 +20,7 @@ sudo update-alternatives --install /usr/bin/cpp cpp /usr/bin/cpp-4.9 100
 sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 100
 
 # Install required packages by UPP
-sudo apt-get -y install libbz2-dev libfreetype6-dev libpng12-dev gtk2.0-dev libnotify-dev libssl-dev
+sudo apt-get -y install libbz2-dev libfreetype6-dev libpng12-dev gtk2.0-dev libnotify-dev libssl-dev liblz4-tool liblz4-dev
 
 sudo apt-get autoremove
 
