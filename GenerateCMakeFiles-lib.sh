@@ -1048,8 +1048,8 @@ generate_cmake_from_upp()
                     while read line_rc; do
                         if [[ ${line_rc} =~ ICON ]]; then
                             line_rc_params=(${line_rc})
-                            echo "file ( COPY \"${list}\" DESTINATION \${PROJECT_BINARY_DIR} )" >> ${OFN}
-                            echo "file ( COPY ${line_rc_params[3]} DESTINATION \${PROJECT_BINARY_DIR} )" >> ${OFN}
+                            echo "file ( COPY \"${list}\" DESTINATION \${PROJECT_BINARY_DIR}/\${CMAKE_PROJECT_NAME} )" >> ${OFN}
+                            echo "file ( COPY ${line_rc_params[3]} DESTINATION \${PROJECT_BINARY_DIR}/\${CMAKE_PROJECT_NAME} )" >> ${OFN}
                             break
                         fi
                     done < ${list}
@@ -1060,7 +1060,7 @@ generate_cmake_from_upp()
 #        echo >> ${OFN}
 #        echo '# icpp files processing' >> ${OFN}
 #        echo "foreach ( icppFile \${$SOURCE_LIST_ICPP} )" >> ${OFN}
-#        echo '  set ( output_file "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}/${icppFile}.cpp" )' >> ${OFN}
+#        echo '  set ( output_file "${PROJECT_BINARY_DIR}/${CMAKE_PROJECT_NAME}/${icppFile}.cpp" )' >> ${OFN}
 #        echo '  file ( WRITE "${output_file}" "#include \"${CMAKE_CURRENT_SOURCE_DIR}/${icppFile}\"\n" )' >> ${OFN}
 #        echo "  list ( APPEND ${SOURCE_LIST_CPP} \${output_file} )" >> ${OFN}
 #        echo 'endforeach()' >> ${OFN}
@@ -1198,7 +1198,7 @@ get_upp_to_process()
 generate_package_file()
 {
     if [ -z "${PROJECT_NAME}" ]; then
-        echo "ERROR - Variable \$PROJECT_NAME is not defined! Can't create archive package!"
+        echo "ERROR - BASH variable \$PROJECT_NAME is not defined! Can't create archive package!"
         exit 1
     else
         echo -n "Creating archive "
@@ -1711,7 +1711,7 @@ endfunction()
 function ( create_cpps_from_icpps )
   file ( GLOB icpp_files RELATIVE "\${CMAKE_CURRENT_SOURCE_DIR}" "\${CMAKE_CURRENT_SOURCE_DIR}/*.icpp" )
   foreach ( icppFile \${icpp_files} )
-      set ( output_file "\${CMAKE_CURRENT_BINARY_DIR}/\${PROJECT_NAME}/\${icppFile}.cpp" )
+      set ( output_file "\${PROJECT_BINARY_DIR}/\${CMAKE_PROJECT_NAME}/\${icppFile}.cpp" )
       file ( WRITE "\${output_file}" "#include \"\${CMAKE_CURRENT_SOURCE_DIR}/\${icppFile}\"\n" )
   endforeach()
 endfunction()
@@ -1875,17 +1875,17 @@ else()
 endif()
 
 # Collect icpp files
-file ( GLOB_RECURSE cpp_ini_files "\${CMAKE_CURRENT_BINARY_DIR}/*.icpp.cpp" )
+file ( GLOB_RECURSE cpp_ini_files "\${PROJECT_BINARY_DIR}/\${CMAKE_PROJECT_NAME}/*.icpp.cpp" )
 
 # Collect windows resource config file
 if ( WIN32 )
-  file ( GLOB rc_file "\${PROJECT_BINARY_DIR}/*.rc" )
+  file ( GLOB rc_file "\${PROJECT_BINARY_DIR}/\${CMAKE_PROJECT_NAME}/*.rc" )
 endif()
 
 # Main program definition
-file ( WRITE \${PROJECT_BINARY_DIR}/null.cpp "" )
+file ( WRITE \${PROJECT_BINARY_DIR}/\${CMAKE_PROJECT_NAME}/null.cpp "" )
 if ( "\${FlagDefs}" MATCHES "(flagSO)(;|$)" )
-  add_library ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/null.cpp \${rc_file} \${cpp_ini_files} )
+  add_library ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/\${CMAKE_PROJECT_NAME}/null.cpp \${rc_file} \${cpp_ini_files} )
   if ( WIN32 )
     include ( GenerateExportHeader )
     generate_export_header ( ${main_target_name}${BIN_SUFFIX}
@@ -1896,7 +1896,7 @@ if ( "\${FlagDefs}" MATCHES "(flagSO)(;|$)" )
     )
   endif()
 else()
-  add_executable ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/null.cpp \${rc_file} \${cpp_ini_files} )
+  add_executable ( ${main_target_name}${BIN_SUFFIX} \${PROJECT_BINARY_DIR}/\${CMAKE_PROJECT_NAME}/null.cpp \${rc_file} \${cpp_ini_files} )
 endif()
 
 # Main program dependecies
