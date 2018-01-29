@@ -345,6 +345,12 @@ add_require_for_lib()
             req_lib_param="gtk+-3.0"
             use_pkg="1"
             ;;
+        "SDL")
+            req_lib_name="SDL"
+            ;;
+        "SDL2")
+            req_lib_name="SDL2"
+            ;;
     esac
 
     if [ -n "${req_lib_name}" ]; then
@@ -357,6 +363,10 @@ add_require_for_lib()
         echo "  if ( ${req_lib_name^^}_FOUND )" >> ${OFN}
         echo "      list ( APPEND ${INCLUDE_LIST} \${${req_lib_name^^}_INCLUDE_${req_lib_dir}} )" >> ${OFN}
         echo "      list ( APPEND ${link_list} \${${req_lib_name^^}_LIBRARIES} )" >> ${OFN}
+        echo "      # remove leading or trailing whitespace (e.g. for SDL2)" >> ${OFN}
+        echo "      if ( ${link_list} )" >> ${OFN}
+        echo "          string ( STRIP \"\${${link_list}}\" ${link_list} )" >> ${OFN}
+        echo "      endif()" >> ${OFN}
         echo "  endif()" >> ${OFN}
 
         if [ "${req_lib_param}" == "gtk" ]; then
@@ -376,7 +386,6 @@ add_all_uses() {
     if [[ ! " ${UPP_ALL_USES[@]} " =~ " ${value} " ]]; then
         UPP_ALL_USES+=(${value})
     fi
-
 }
 
 list_parse()
@@ -1794,6 +1803,7 @@ endfunction()
 # Initialize definition flags (flags are used during targets compilation)
 get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 foreach( comp_def \${FlagDefs} )
+  message ( STATUS "  initialize flag " \${comp_def} )
   set ( \${comp_def} 1 )
 endforeach()
 
@@ -1847,7 +1857,7 @@ EOL
     library_dep="${library_dep//plugin_zstd-lib}"
     library_dep="${library_dep/ZstdTest-lib/ZstdTest-lib;plugin_zstd-lib}"
 
-    # Begin of the cat (CMakeFiles.txt)
+    # Beginning of the cat (CMakeFiles.txt)
     cat >> ${OFN} << EOL
 
 # Creation of the file build_info.h

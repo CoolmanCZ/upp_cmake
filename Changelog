@@ -1,4 +1,6 @@
-2017-09-17 16:14:54 +0200 -         : Scripts updated
+2018-01-29 10:46:26 +0100 -         : Add support to find SDL and SDL2 include directory and library
+2017-09-18 10:26:31 +0200 - 2496577 : Copy project files to the  directory
+2017-09-17 16:14:54 +0200 - 3a72f5f : Scripts updated
 2017-09-17 16:14:13 +0200 - 5f8e005 : Search for icpp files fixed, -fdiagnostics-color option added
 2017-07-10 08:48:22 +0200 - be9982b : Add missing endif()
 2017-07-10 08:45:33 +0200 - 1527390 : Add support for VS 15.0
