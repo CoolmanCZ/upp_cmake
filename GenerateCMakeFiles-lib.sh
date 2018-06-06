@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2016-2017 Radek Malcic
+# Copyright (C) 2016-2018 Radek Malcic
 #
 # All rights reserved.
 #
@@ -1298,6 +1298,19 @@ set ( PROJECT_PCH_DIR \${PROJECT_BINARY_DIR}/pch )
 include_directories ( BEFORE \${UPP_SOURCE_DIRECTORY} )
 include_directories ( BEFORE \${PROJECT_INC_DIR} \${UPP_EXTRA_INCLUDE} )
 include_directories ( BEFORE \${CMAKE_CURRENT_SOURCE_DIR} )
+
+EOL
+# End of the cat (CMakeFiles.txt)
+
+    # include directories relevant to the package
+    local include_dirname=${main_target_dirname}
+    while [ ! "$include_dirname" == "." ]; do
+        echo "include_directories ( BEFORE \${CMAKE_SOURCE_DIR}/${include_dirname} )" >> ${OFN}
+        include_dirname=$(dirname "$include_dirname")
+    done
+
+    # Begin of the cat (CMakeFiles.txt)
+    cat >> ${OFN} << EOL
 
 # Set the default path for built executables to the bin directory
 set ( EXECUTABLE_OUTPUT_PATH \${PROJECT_BINARY_DIR}/bin )
