@@ -1,4 +1,5 @@
-2018-01-29 10:46:26 +0100 -         : Add support to find SDL and SDL2 include directory and library
+2018-06-06 10:35:53 +0200 -         : include directories relevant to the package
+2018-01-29 10:46:26 +0100 - 69e3f62 : Add support to find SDL and SDL2 include directory and library
 2017-09-18 10:26:31 +0200 - 2496577 : Copy project files to the  directory
 2017-09-17 16:14:54 +0200 - 3a72f5f : Scripts updated
 2017-09-17 16:14:13 +0200 - 5f8e005 : Search for icpp files fixed, -fdiagnostics-color option added
