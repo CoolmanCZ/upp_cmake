@@ -59,6 +59,7 @@ RE_BRC='\.(brc)$'
 RE_USES='^uses\('
 RE_LINK='^link\('
 RE_LIBRARY='^library\('
+RE_LIBRARY_LIST='^library$'
 RE_OPTIONS='^options'
 RE_DEPEND='^uses$'
 RE_FILES='^file$'
@@ -393,23 +394,35 @@ list_parse()
     local line="${1}"
     local list="${2}"
     local target_name="${3}"
+    local list_append="${4}"
     local options=""
     local parameters=""
 
     echo >> ${OFN}
-    echo "#${1}" >> ${OFN}
+    if [ -z "${list_append}" ]; then
+        echo "# ${line}" >> ${OFN}
+    else
+        echo "# ${list_append} ${line}" >> ${OFN}
+    fi
+#    echo "\"line: $line\""
 
     if [[ "${line}" =~ BUILDER_OPTION ]]; then
         $(if_options_builder "${line}")
     else
-        options=$(string_get_in_parenthesis "${line}")
-        options=$(if_options_parse_all "${options}")              # Parse options
-#        echo "\"option: $options\""
+        if [ -z "${list_append}" ]; then
+            options=$(string_get_in_parenthesis "${line}")
+            options=$(if_options_parse_all "${options}")              # Parse options
+#            echo "\"option: $options\""
 
-        parameters=$(string_get_after_parenthesis "${line}")
-        parameters=$(string_remove_comma "${parameters}")
-#        echo "\"param : $parameters\""
-#        echo "\"list  : $list\""
+            parameters=$(string_get_after_parenthesis "${line}")
+            parameters=$(string_remove_comma "${parameters}")
+#            echo "\"param : $parameters\""
+        else
+#            echo "\"option:\""
+            parameters=$(string_remove_comma "${line}")
+#            echo "\"param : $parameters\""
+        fi
+#            echo "\"list  : $list\""
 
         # Add optional dependency target to generate CMakeLists.txt
         if [[ ${list} =~ "${DEPEND_LIST}" ]]; then
@@ -421,15 +434,21 @@ list_parse()
             done
         fi
 
+        local tab=""
         if [ -n "${options}" ] ; then
             echo "if (${options})" >> ${OFN}
-            if [ -n "${target_name}" ]; then
-                local -a check_library_array=(${parameters})
-                for check_library in "${check_library_array[@]}"; do
-                    add_require_for_lib "${list}" "${check_library}"
-                done
-            fi
-            echo "  list ( APPEND ${list} ${parameters} )" >> ${OFN}
+            tab="    "
+        fi
+
+        if [ -n "${target_name}" ]; then
+            local -a check_library_array=(${parameters})
+            for check_library in "${check_library_array[@]}"; do
+                add_require_for_lib "${list}" "${check_library}"
+            done
+        fi
+        echo "${tab}list ( APPEND ${list} ${parameters} )" >> ${OFN}
+
+        if [ -n "${options}" ] ; then
             echo "endif()" >> ${OFN}
         fi
     fi
@@ -757,6 +776,7 @@ import_ext_parse()
 
 generate_cmake_header()
 {
+    rm ${OFN}
     cat > ${OFN} << EOL
 # ${OFN} generated $(export LC_ALL=C; date)
 cmake_minimum_required ( VERSION 2.8.10 )
@@ -797,6 +817,7 @@ generate_cmake_from_upp()
     local options_start=0
     local files_start=0
     local mainconfig_start=0
+    local library_list_start=0
     local tmp=""
     local list=""
     local line=""
@@ -814,6 +835,25 @@ generate_cmake_from_upp()
             # Parse compiler options
             if [[ ${line} =~ $RE_USES ]]; then
                 list_parse "${line}" ${target_name}_${DEPEND_LIST}
+            fi
+
+            # Begin of the library section
+            if [[ ${line} =~ $RE_LIBRARY_LIST ]]; then
+                library_list_start=1
+                continue
+            fi
+
+            # End of the library section (line with ';')
+            if [ ${library_list_start} -gt 0 ] && [[ ${line} =~ ';' ]]; then
+                library_list_start=2
+            fi
+
+            # Parse library list options
+            if [[ ${library_list_start} -gt 0 ]]; then
+                list_parse "${line}" ${LINK_LIST} "${target_name}" "append library"
+                if [ ${library_list_start} -eq 2 ]; then
+                    library_list_start=-1
+                fi
             fi
 
             # Parse library options
@@ -837,6 +877,15 @@ generate_cmake_from_upp()
                 options_start=2
             fi
 
+            # Parse options
+            if [ ${options_start} -gt 0 ]; then
+                tmp="${line//,}"
+                OPTIONS+=(${tmp//;})
+                if [ ${options_start} -eq 2 ]; then
+                    options_start=-1
+                fi
+            fi
+
             # Parse link options
             if [[ ${line} =~ $RE_LINK ]]; then
                 link_parse "${line}" "${target_name}"
@@ -853,15 +902,14 @@ generate_cmake_from_upp()
                 depend_start=2
             fi
 
-            # Begin of the files section
-            if [[ ${line} =~ $RE_FILES ]]; then
-                files_start=1
-                continue
-            fi
-
-            # End of the files section (line with ';')
-            if [ ${files_start} -gt 0 ] && [[ ${line} =~ ';' ]]; then
-                files_start=2
+            # Parse dependency
+            if [ ${depend_start} -gt 0 ]; then
+                tmp="${line//,}"
+                USES+=(${tmp//;})
+                add_all_uses "${tmp//;}"
+                if [ ${depend_start} -eq 2 ]; then
+                    depend_start=-1
+                fi
             fi
 
             # Begin of the mainconfig section
@@ -873,6 +921,30 @@ generate_cmake_from_upp()
             # End of the mainconfig section (line with ';')
             if [ ${mainconfig_start} -gt 0 ] && [[ ${line} =~ ';' ]]; then
                 mainconfig_start=2
+            fi
+
+            # Parse mainconfig
+            if [ ${mainconfig_start} -gt 0 ]; then
+                if [[ ${line} =~ "GUI" ]]; then
+                    FLAG_GUI="1"
+                fi
+                if [[ ${line} =~ "MT" ]]; then
+                    FLAG_MT="1"
+                fi
+                if [ ${mainconfig_start} -eq 2 ]; then
+                    depend_start=-1
+                fi
+            fi
+
+            # Begin of the files section
+            if [[ ${line} =~ $RE_FILES ]]; then
+                files_start=1
+                continue
+            fi
+
+            # End of the files section (line with ';')
+            if [ ${files_start} -gt 0 ] && [[ ${line} =~ ';' ]]; then
+                files_start=2
             fi
 
             # Skip lines with "separator" mark
@@ -937,38 +1009,6 @@ generate_cmake_from_upp()
                 done
                 if [ ${files_start} -eq 2 ]; then
                     files_start=-1
-                fi
-            fi
-
-            # Parse dependency
-            if [ ${depend_start} -gt 0 ]; then
-                tmp="${line//,}"
-                USES+=(${tmp//;})
-                add_all_uses "${tmp//;}"
-                if [ $depend_start -eq 2 ]; then
-                    depend_start=-1
-                fi
-            fi
-
-            # Parse mainconfig
-            if [ ${mainconfig_start} -gt 0 ]; then
-                if [[ ${line} =~ "GUI" ]]; then
-                    FLAG_GUI="1"
-                fi
-                if [[ ${line} =~ "MT" ]]; then
-                    FLAG_MT="1"
-                fi
-                if [ $mainconfig_start -eq 2 ]; then
-                    depend_start=-1
-                fi
-            fi
-
-            # Parse options
-            if [ ${options_start} -gt 0 ]; then
-                tmp="${line//,}"
-                OPTIONS+=(${tmp//;})
-                if [ $options_start -eq 2 ]; then
-                    options_start=-1
                 fi
             fi
 
@@ -1082,11 +1122,11 @@ generate_cmake_from_upp()
         echo "target_include_directories ( ${target_name}${LIB_SUFFIX} PUBLIC \${${INCLUDE_LIST}} )" >> ${OFN}
         echo "set_property ( TARGET ${target_name}${LIB_SUFFIX} APPEND PROPERTY COMPILE_OPTIONS \"\${${COMPILE_FLAGS_LIST}}\" )" >> ${OFN}
 
-        echo >> ${OFN}
-        echo "# Module dependecies" >> ${OFN}
-        echo "if ( ${target_name}_${DEPEND_LIST} )" >> ${OFN}
-        echo "  add_dependencies ( ${target_name}${LIB_SUFFIX} \${${target_name}_$DEPEND_LIST} )" >> ${OFN}
-        echo "endif()" >> ${OFN}
+#        echo >> ${OFN}
+#        echo "# Module dependecies" >> ${OFN}
+#        echo "if ( ${target_name}_${DEPEND_LIST} )" >> ${OFN}
+#        echo "  add_dependencies ( ${target_name}${LIB_SUFFIX} \${${target_name}_$DEPEND_LIST} )" >> ${OFN}
+#        echo "endif()" >> ${OFN}
 
         echo >> ${OFN}
         echo "# Module link" >> ${OFN}
