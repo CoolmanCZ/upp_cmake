@@ -56,14 +56,14 @@ RE_CPP='\.([cC]+[xXpP]{0,2})$'
 RE_ICPP='\.([iI][cC]+[xXpP]{0,2})$'
 RE_RC='\.(rc)$'
 RE_BRC='\.(brc)$'
-RE_USES='^uses\('
-RE_LINK='^link\('
-RE_LIBRARY='^library\('
-RE_LIBRARY_LIST='^library$'
-RE_OPTIONS='^options'
-RE_DEPEND='^uses$'
+RE_USES='^uses$'
+RE_LINK='^link$'
+RE_LIBRARY='^library$'
+RE_STATIC_LIBRARY='^static_library$'
+RE_OPTIONS='^options$'
 RE_FILES='^file$'
-RE_MAINCONFIG='^mainconfig'
+RE_INCLUDE='^include$'
+RE_MAINCONFIG='^mainconfig$'
 RE_SEPARATOR='separator'
 RE_IMPORT='import.ext'
 RE_IMPORT_ADD='^files|^includes'
@@ -78,6 +78,29 @@ FLAG_MT=""
 
 UPP_ALL_USES=()
 UPP_ALL_USES_DONE=()
+INCLUDE_SYSTEM_LIST=()
+
+SECTIONS=("acceptflags" "charset" "custom" "description" "file" "flags" "include" "library" "static_library" "link" "optimize_size" "optimize_speed" "options" "mainconfig" "noblitz" "target" "uses")
+
+get_section_name()
+{
+    local line="${1}"
+    line="${line//\(/ }"
+    line="${line//\)/ }"
+    local tmp=(${line})
+    local name="$(string_trim_spaces_both "${tmp[0]}")"
+    if [[ " ${SECTIONS[@]} " =~ " ${name} " ]]; then
+        echo "${name}"
+    fi
+}
+
+get_section_line()
+{
+    local section="${1}"
+    local line="$(string_trim_spaces_both "${2}")"
+    line="${line/#${section}/}"
+    echo "$(string_trim_spaces_both "${line}")"
+}
 
 test_required_binaries()
 {
@@ -806,6 +829,7 @@ generate_cmake_from_upp()
     local upp_ext="${1}"
     local object_name="${2}"
     local main_target="${3}"
+
     local USES=()
     local HEADER=()
     local SOURCE_C=()
@@ -813,166 +837,147 @@ generate_cmake_from_upp()
     local SOURCE_RC=()
     local SOURCE_ICPP=()
     local OPTIONS=()
-    local depend_start=0
-    local options_start=0
-    local files_start=0
-    local mainconfig_start=0
-    local library_list_start=0
+
     local tmp=""
-    local list=""
     local line=""
-    local line_array=()
     local dir_array=()
+
+    INCLUDE_SYSTEM_LIST=()
 
     if [ -f "${upp_ext}" ]; then
         local target_name="$(string_replace_dash "${object_name}")"
+        local name=""
+        local content=()
+        local section_name=()
+        local section_content=()
 
-        # _start: 0 = not in the block, 1 = in the block, 2 = in the block with the end, -1 = block done
+        # parse upp file
         while read line; do
             # Remove DOS line ending
             line=`echo ${line} | sed $'s/\r$//'`
+            test_name=$(get_section_name "${line}")
+            if [ ! "${test_name}" == "" ]; then
+                if [ ! "${name}" == "" ]; then
+                    section_name+=("${name}")
+                    section_content+=("${content[*]@Q}")
+                    content=()
+                fi
+                name="${test_name}"
+            fi
+
+            section_line=$(get_section_line "${name}" "${line}")
+            if [ "${section_line}" == "" ]; then
+                continue;
+            fi
+
+            content+=("${section_line}")
+        done < <(sed 's#\\#/#g' "${upp_ext}")
+        section_name+=("${name}")
+        section_content+=("${content[*]@Q}")
+
+        # process sections
+        for index in ${!section_name[@]}; do
+            local section="${section_name[$index]}"
+            eval "content=(${section_content[$index]})"
+
+#            echo "section: $section"
+#            echo "content: ${content[@]}"
 
             # Parse compiler options
-            if [[ ${line} =~ $RE_USES ]]; then
-                list_parse "${line}" ${target_name}_${DEPEND_LIST}
-            fi
-
-            # Begin of the library section
-            if [[ ${line} =~ $RE_LIBRARY_LIST ]]; then
-                library_list_start=1
-                continue
-            fi
-
-            # End of the library section (line with ';')
-            if [ ${library_list_start} -gt 0 ] && [[ ${line} =~ ';' ]]; then
-                library_list_start=2
+            if [[ ${section} =~ $RE_USES ]]; then
+                for LINE in "${content[@]}"; do
+                    if [[ "${LINE:0:1}" == "(" ]] && [[ ${LINE} =~ ';' ]]; then
+                        list_parse "uses${LINE}" ${target_name}_${DEPEND_LIST}
+                    else
+                        tmp="${LINE//,}"
+                        USES+=(${tmp//;})
+                        add_all_uses "${tmp//;}"
+                    fi
+                done
             fi
 
             # Parse library list options
-            if [[ ${library_list_start} -gt 0 ]]; then
-                list_parse "${line}" ${LINK_LIST} "${target_name}" "append library"
-                if [ ${library_list_start} -eq 2 ]; then
-                    library_list_start=-1
-                fi
+            if [[ ${section} =~ $RE_LIBRARY ]] || [[ ${section} =~ $RE_STATIC_LIBRARY ]]; then
+                for LINE in "${content[@]}"; do
+                    if [[ "${LINE:0:1}" == "(" ]] && [[ ${LINE} =~ ';' ]]; then
+                        list_parse "library${LINE}" ${LINK_LIST} "${target_name}"
+                    else
+                        list_parse "${LINE}" ${LINK_LIST} "${target_name}" "append library"
+                    fi
+                done
             fi
 
-            # Parse library options
-            if [[ ${line} =~ $RE_LIBRARY ]]; then
-                list_parse "${line}" ${LINK_LIST} "${target_name}"
+            # Parse options section
+            if [[ ${section} =~ $RE_OPTIONS ]]; then
+                for LINE in "${content[@]}"; do
+                    if [[ "${LINE:0:1}" == "(" ]] && [[ ${LINE} =~ ';' ]]; then
+                        list_parse "options${LINE}" ${COMPILE_FLAGS_LIST} "${target_name}"
+                    else
+                        tmp="${LINE//,}"
+                        OPTIONS+=(${tmp//;})
+                    fi
+                done
             fi
 
-            # Begin of the options section
-            if [[ ${line} =~ $RE_OPTIONS ]]; then
-                options_start=1
-                # Parse project options with the condition
-                if [[ ${line} =~ '(' ]] && [[ ${line} =~ ';' ]]; then
-                    list_parse "${line}" ${COMPILE_FLAGS_LIST} "${target_name}"
-                    options_start=0
-                fi
-                continue;
-            fi
-
-            # End of the options section (line with ';')
-            if [ ${options_start} -gt 0 ] && [[ ${line} =~ ';' ]]; then
-                options_start=2
-            fi
-
-            # Parse options
-            if [ ${options_start} -gt 0 ]; then
-                tmp="${line//,}"
-                OPTIONS+=(${tmp//;})
-                if [ ${options_start} -eq 2 ]; then
-                    options_start=-1
-                fi
+            # Parse include options
+            if [[ ${section} =~ $RE_INCLUDE ]]; then
+                for LINE in "${content[@]}"; do
+                    LINE=${LINE//,}
+                    LINE=${LINE//;}
+                    INCLUDE_SYSTEM_LIST+=("${LINE}")
+                done
             fi
 
             # Parse link options
-            if [[ ${line} =~ $RE_LINK ]]; then
-                link_parse "${line}" "${target_name}"
-            fi
-
-            # Begin of the dependency section
-            if [[ ${line} =~ $RE_DEPEND ]]; then
-                depend_start=1
-                continue
-            fi
-
-            # End of the dependency section (line with ';')
-            if [ ${depend_start} -gt 0 ] && [[ ${line} =~ ';' ]]; then
-                depend_start=2
-            fi
-
-            # Parse dependency
-            if [ ${depend_start} -gt 0 ]; then
-                tmp="${line//,}"
-                USES+=(${tmp//;})
-                add_all_uses "${tmp//;}"
-                if [ ${depend_start} -eq 2 ]; then
-                    depend_start=-1
-                fi
-            fi
-
-            # Begin of the mainconfig section
-            if [[ ${line} =~ $RE_MAINCONFIG ]]; then
-                mainconfig_start=1
-                continue
-            fi
-
-            # End of the mainconfig section (line with ';')
-            if [ ${mainconfig_start} -gt 0 ] && [[ ${line} =~ ';' ]]; then
-                mainconfig_start=2
+            if [[ ${section} =~ $RE_LINK ]]; then
+                for LINE in "${content[@]}"; do
+                    link_parse "link${LINE}" "${target_name}"
+                done
             fi
 
             # Parse mainconfig
-            if [ ${mainconfig_start} -gt 0 ]; then
-                if [[ ${line} =~ "GUI" ]]; then
-                    FLAG_GUI="1"
-                fi
-                if [[ ${line} =~ "MT" ]]; then
-                    FLAG_MT="1"
-                fi
-                if [ ${mainconfig_start} -eq 2 ]; then
-                    depend_start=-1
-                fi
+            if [[ ${section} =~ $RE_MAINCONFIG ]]; then
+                for LINE in "${content[@]}"; do
+                    if [[ ${LINE} =~ "GUI" ]]; then
+                        FLAG_GUI="1"
+                    fi
+                    if [[ ${LINE} =~ "MT" ]]; then
+                        FLAG_MT="1"
+                    fi
+                done
             fi
 
-            # Begin of the files section
-            if [[ ${line} =~ $RE_FILES ]]; then
-                files_start=1
-                continue
-            fi
+            # Parse files
+            if [[ ${section} =~ $RE_FILES ]]; then
+                local list=""
+                local line_array=()
 
-            # End of the files section (line with ';')
-            if [ ${files_start} -gt 0 ] && [[ ${line} =~ ';' ]]; then
-                files_start=2
-            fi
+                for LINE in "${content[@]}"; do
+                    # Skip lines with "separator" mark
+                    if [[ ${LINE} =~ $RE_SEPARATOR ]]; then
+                        continue
+                    fi
 
-            # Skip lines with "separator" mark
-            if [ ${files_start} -gt 0 ] && [[ ${line} =~ $RE_SEPARATOR ]]; then
-                continue;
-            fi
+                    # Find precompiled header option
+                    if [[ "${LINE}" =~ $RE_FILE_PCH ]] && [[ "${LINE}" =~ BUILDER_OPTION ]]; then
+                        local pch_file=${LINE// */}
+                        echo >> ${OFN}
+                        echo '# Precompiled headers file' >> ${OFN}
+                        echo "set ( ${PCH_FILE} "\${CMAKE_CURRENT_SOURCE_DIR}/${pch_file}" )" >> ${OFN}
+                    fi
 
-            # Parse file names
-            if [ ${files_start} -gt 0 ]; then
-                # Find precompiled header option
-                if [[ "${line}" =~ $RE_FILE_PCH ]] && [[ "${line}" =~ BUILDER_OPTION ]]; then
-                    local pch_file=${line// */}
-                    echo >> ${OFN}
-                    echo '# Precompiled headers file' >> ${OFN}
-                    echo "set ( ${PCH_FILE} "\${CMAKE_CURRENT_SOURCE_DIR}/${pch_file}" )" >> ${OFN}
-                fi
+                    # Split lines with charset, options, ...
+                    if [[ "${LINE}" =~ $RE_FILE_SPLIT ]]; then
+                        LINE="${LINE// */}"
+                    fi
 
-                # Split lines with charset, options, ...
-                if [[ "${line}" =~ $RE_FILE_SPLIT ]]; then
-                    line="${line// */}"
-                fi
-
-                if [[ ${line} =~ $RE_IMPORT ]]; then
-                    line_array=($(import_ext_parse ${line}))
-                    dir_array=($(dirname ${line_array[@]} | sort -u))
-                else
-                    read -a line_array <<< ${line}
-                fi
+                    if [[ ${LINE} =~ $RE_IMPORT ]]; then
+                        line_array=($(import_ext_parse ${LINE}))
+                        dir_array=($(dirname ${line_array[@]} | sort -u))
+                    else
+                        line_array+=(${LINE})
+                    fi
+                done
 
                 for list in "${line_array[@]}"; do
                     list=${list//,}
@@ -1007,17 +1012,14 @@ generate_cmake_from_upp()
                         fi
                     fi
                 done
-                if [ ${files_start} -eq 2 ]; then
-                    files_start=-1
-                fi
             fi
 
-        done < <(sed 's#\\#/#g' "${upp_ext}")
+        done
 
         # Create include directory list
         if [ -n "${dir_array}" ]; then
             echo >> ${OFN}
-            echo "include_directories ( " >> ${OFN}
+            echo "include_directories (" >> ${OFN}
             for list in "${dir_array[@]}"; do
                 if [[ " ${list} " != " . " ]]; then
                     echo "      ${list}" >> ${OFN}
@@ -1027,7 +1029,7 @@ generate_cmake_from_upp()
         fi
 
         # Create project option definitions
-        if [ -n "${OPTIONS}" ] ; then
+        if [ -n "${OPTIONS}" ]; then
             echo >> ${OFN}
             echo "add_definitions (" >> ${OFN}
             for list in "${OPTIONS[@]}"; do
@@ -1037,7 +1039,7 @@ generate_cmake_from_upp()
         fi
 
         # Create header files list
-        if [ -n "${HEADER}" ] ; then
+        if [ -n "${HEADER}" ]; then
             echo >> ${OFN}
             echo "list ( APPEND ${HEADER_LIST}" >> ${OFN}
             for list in "${HEADER[@]}"; do
@@ -1047,7 +1049,7 @@ generate_cmake_from_upp()
         fi
 
         # Create C source files list
-        if [ -n "${SOURCE_C}" ] ; then
+        if [ -n "${SOURCE_C}" ]; then
             echo >> ${OFN}
             echo "list ( APPEND ${SOURCE_LIST_C}" >> ${OFN}
             for list in "${SOURCE_C[@]}"; do
@@ -1057,7 +1059,7 @@ generate_cmake_from_upp()
         fi
 
         # Create CPP source files list
-        if [ -n "${SOURCE_CPP}" ] ; then
+        if [ -n "${SOURCE_CPP}" ]; then
             echo >> ${OFN}
             echo "list ( APPEND ${SOURCE_LIST_CPP}" >> ${OFN}
             for list in "${SOURCE_CPP[@]}"; do
@@ -1067,7 +1069,7 @@ generate_cmake_from_upp()
         fi
 
         # Create icpp source files list
-        if [ -n "${SOURCE_ICPP}" ] ; then
+        if [ -n "${SOURCE_ICPP}" ]; then
             echo >> ${OFN}
             echo "list ( APPEND ${SOURCE_LIST_ICPP}" >> ${OFN}
             for list in "${SOURCE_ICPP[@]}"; do
@@ -1077,7 +1079,7 @@ generate_cmake_from_upp()
         fi
 
         # Create dependency list
-        if [ -n "${USES}" ] ; then
+        if [ -n "${USES}" ]; then
             echo >> ${OFN}
             echo "list ( APPEND ${target_name}_${DEPEND_LIST}" >> ${OFN}
             for list in "${USES[@]}"; do
@@ -1856,16 +1858,18 @@ endfunction()
 # Initialize definition flags (flags are used during targets compilation)
 get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 foreach( comp_def \${FlagDefs} )
-  message ( STATUS "  initialize flag " \${comp_def} )
-  set ( \${comp_def} 1 )
+    message ( STATUS "  initialize flag " \${comp_def} )
+    set ( \${comp_def} 1 )
 endforeach()
 
 EOL
 # End of the cat (CMakeFiles.txt)
 
     local PKG_DIR=""
+    local dir=""
+    local dir_include=()
+    local dir_add=()
 
-    echo '# Include dependent directories of the project' >> ${OFN}
     while [ ${#UPP_ALL_USES_DONE[@]} -lt ${#UPP_ALL_USES[@]} ]; do
         local process_upp=$(get_upp_to_process)
 #        echo "num of elements all : ${#UPP_ALL_USES[@]} (${UPP_ALL_USES[@]})"
@@ -1889,11 +1893,24 @@ EOL
                     generate_cmake_file ${PKG_DIR}/${process_upp}/${process_upp}.upp "${process_upp}"
                 fi
 
-                echo "add_subdirectory ( ${PKG_DIR}/${process_upp} \${CMAKE_CURRENT_BINARY_DIR}/${process_upp} )" >> ${OFN}
+                # include directories from packages
+                for dir in "${INCLUDE_SYSTEM_LIST[@]}"; do
+                    dir_include+=("include_directories ( \${PROJECT_SOURCE_DIR}/${PKG_DIR}/${process_upp}/${dir} )")
+                done
+                dir_add+=("add_subdirectory ( ${PKG_DIR}/${process_upp} \${CMAKE_CURRENT_BINARY_DIR}/${process_upp} )")
             fi
         fi
 
         UPP_ALL_USES_DONE+=("${process_upp}")
+    done
+
+    echo '# Include dependent directories of the project' >> ${OFN}
+    for dir in "${dir_include[@]}"; do
+        echo "$dir" >> ${OFN}
+    done
+
+    for dir in "${dir_add[@]}"; do
+        echo "$dir" >> ${OFN}
     done
 
     echo "add_subdirectory ( ${main_target_dirname} \${CMAKE_CURRENT_BINARY_DIR}/${main_target_name} )" >> ${OFN}

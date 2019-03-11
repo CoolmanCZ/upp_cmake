@@ -1,4 +1,5 @@
-2018-09-29 17:53:35 +0200 -         : Parse library section without option, disable module dependencies
+2019-03-11 20:46:49 +0100 -         : Rewrite parsing function
+2018-09-29 17:53:35 +0200 - 2152fb0 : Parse library section without option, disable module dependencies
 2018-06-06 10:36:07 +0200 - 37b7a1c : Changelog update
 2018-06-06 10:35:53 +0200 - 7111f03 : include directories relevant to the package
 2018-01-29 10:46:26 +0100 - 69e3f62 : Add support to find SDL and SDL2 include directory and library
