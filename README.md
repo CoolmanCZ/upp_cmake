@@ -3,8 +3,70 @@
 GenerateCMakeFiles-lib.sh is the bash script for generating CMakeLists.txt files of the [Ultimate++](http://www.ultimatepp.org/) projects.
 This script was created based on discussion [CMake support](http://www.ultimatepp.org/forums/index.php?t=msg&th=6013&goto=32310&#msg_32310) on the [Ultimate++ forum](http://www.ultimatepp.org/forums).
 
-## Parameters
-Using of the script is demonstrated in the example.sh, where you should change the variables:
+# Supported features
+- New Core with C++14 build (require GCC 4.9+)
+- Release or debug build
+- Binary resource support (BINARY, BINARY_MASK, BINARY_ARRAY)
+- Cross compile support (require MINGW GCC 4.9+)
+- (MSYS2) MINGW support
+- Generated CMakeLists.txt files can be used to create a MS Visual C++ project
+- Generated CMakeLists.txt files are generated only for dependent modules of the processed Ultimate++ project
+- Create a distribution package
+- Build shared libraries as the target (DLL, SO)
+- Precompiled headers (PCH) (for GCC 4.9+, Clang 3.5+)
+- Batch processing support
+- import.ext file support
+
+## UPP file options
+UPP package format is described at [Ultimate++ documentation page](https://www.ultimatepp.org/app$ide$upp$en-us.html). Each section of .upp file begins with a keyword and ends with semicolon. The recognized section keywords are:
+- [ ] acceptflags
+- [ ] custom
+- [x] file
+- [ ] flags
+- [x] include
+- [x] library
+- [x] static_library
+- [x] link
+- [x] options
+- [ ] mainconfig
+- [ ] target
+- [x] uses
+- **charset** (ignored in CMakeLists generator)
+- **description** (ignored in CMakeLists generator)
+- **optimize_size** (ignored in CMakeLists generator)
+- **optimize_speed** (ignored in CMakeLists generator)
+- **noblitz** (ignored in CMakeLists generator)
+
+## Limitation
+Some section options are not taken into account when generate CMakeLists:
+- file (only options relevant to build are mentioned)
+-- options
+-- depends
+-- optimize_speed
+-- optimize_size
+- include (all include directories are processed as a relative path)
+- static_library (library is considered as a normal library)
+
+# Parameters
+Using of the script is demonstrated in the [example.sh](example.sh), where you should change the variables described below in the text.
+
+Script example:
+``` bash
+#!/bin/bash
+
+source ./GenerateCMakeFiles-lib.sh
+
+GENERATE_VERBOSE="1"        # set to "1" - enable additional output during script processing on the screen
+GENERATE_DEBUG="1"          # set to "1" - enable debug output during script processing on the screen
+GENERATE_PACKAGE="1"        # set to "1" - create a tarball package of the project
+
+UPP_SRC_BASE="upp-x11-src"
+UPP_SRC_DIR="${UPP_SRC_BASE}/uppsrc"
+PROJECT_NAME="${UPP_SRC_DIR}/ide/ide.upp"
+PROJECT_FLAGS="-DflagGUI -DflagMT -DflagGCC -DflagLINUX -DflagPOSIX -DflagSHARED"
+
+generate_main_cmake_file "${PROJECT_NAME}" "${PROJECT_FLAGS}"
+```
 
 ### Main configuration parameters
 * UPP_SRC_DIR - directory path of the Ultimate++ source tree
@@ -29,37 +91,20 @@ Parameters of the "generate_main_cmake_file" function are
 ```
 generate_main_cmake_file <${PROJECT_NAME}> [${PROJECT_FLAGS}]
 ```
-
-## Support
-- New Core with C++14 build (require GCC 4.9+)
-- Release or debug build
-- Binary resource support (BINARY, BINARY_MASK, BINARY_ARRAY)
-- Cross compile support (require MINGW GCC 4.9+)
-- (MSYS2) MINGW support
-- Generated CMakeLists.txt files can be used to create a MS Visual C++ project
-- Generated CMakeLists.txt files are generated only for dependent modules of the processed Ultimate++ project
-- Create a distribution package
-- Build shared libraries as the target (DLL, SO)
-- Precompiled headers (PCH) (for GCC 4.9+, Clang 3.5+)
-- Batch processing support
-- import.ext file support
-
-## Limitation
-- Some options are not taken into account when generating CMakeLists (static_library, file depends)
-
-## TODO
+### TODO
 - Support of the precompiled headers (PCH) for MSVC
 
-## DONE
+### DONE
 - Resolve problem to build DLL,SO as target with flagPCH (The problem disappeared after refactoring of the PCH code.)
 
-## Flags
-Build and configuration flags, that are taken into account by the GenerateCMakeFiles-lib.sh script.
+# Build and configuration Flags
+Build and configuration flags, that are taken into account by the GenerateCMakeFiles-lib.sh script. They can be specified in the variable PROJECT_FLAGS (use **flag** prefix e.g. *-DflagMT*).
+
 - yes - the flag changes / specifies the behavior of the script
 - set - the flag is set by the script, if it is not defined
 - 'empty' - the flag is not used / set by the script
 
-Script set and using new flags (can be disabled by configuration parameters)
+Script sets and using new flags (can be disabled by configuration parameters)
 * flagGNUC14 - set compiler flag -std=c++14
 * flagMP - enable multiple process build (MSVC)
 * flagPCH - use precompiled headers during build (only GCC and Clang are supported now)
@@ -113,3 +158,4 @@ USEMALLOC    |     | Use malloc to allocate memory instead of U++ allocator.
 NOAPPSQL     |     | Do not create global SQL/SQLR instances.
 NOMYSQL      |     | Disable MySql package.
 NOPOSTGRESQL |     | Disable PostgreSQL package.
+

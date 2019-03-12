@@ -1,4 +1,5 @@
-2019-03-11 20:46:49 +0100 -         : Rewrite parsing function
+2019-03-12 07:19:09 +0100 -         : README update
+2019-03-11 20:46:49 +0100 - 7746fff : Rewrite parsing function
 2018-09-29 17:53:35 +0200 - 2152fb0 : Parse library section without option, disable module dependencies
 2018-06-06 10:36:07 +0200 - 37b7a1c : Changelog update
 2018-06-06 10:35:53 +0200 - 7111f03 : include directories relevant to the package
