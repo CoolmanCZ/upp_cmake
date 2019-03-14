@@ -108,13 +108,17 @@ test_required_binaries()
     local my_sed=$(which sed)
     local my_sort=$(which sort)
     local my_date=$(which date)
+    local my_find=$(which find)
+    local my_xargs=$(which xargs)
 
-    if [ -z "${my_sed}" ] || [ -z "${my_sort}" ] || [ -z "${my_date}" ]; then
+    if [ -z "${my_sed}" ] || [ -z "${my_sort}" ] || [ -z "${my_date}" ] || [ -z "${my_find}" ] || [ -z "${my_xargs}" ] ; then
         echo "ERROR - Requirement for generating the CMakeList files failed."
-        echo "ERROR - Can't continue -> Exiting!"
+        echo "ERROR - Can not continue -> Exiting!"
         echo "sed=\"${my_sed}\""
         echo "sort=\"${my_sort}\""
         echo "date=\"${my_date}\""
+        echo "find=\"${my_find}\""
+        echo "xargs=\"${my_xargs}\""
         exit 1
     fi
 }
@@ -859,7 +863,8 @@ generate_cmake_from_upp()
             if [ ! "${test_name}" == "" ]; then
                 if [ ! "${name}" == "" ]; then
                     section_name+=("${name}")
-                    section_content+=("${content[*]@Q}")
+#                    section_content+=("${content[*]@Q}")
+                    section_content+=("$(printf " \'%s\' " "${content[@]}")")
                     content=()
                 fi
                 name="${test_name}"
@@ -873,15 +878,22 @@ generate_cmake_from_upp()
             content+=("${section_line}")
         done < <(sed 's#\\#/#g' "${upp_ext}")
         section_name+=("${name}")
-        section_content+=("${content[*]@Q}")
+#        section_content+=("${content[*]@Q}")
+        section_content+=("$(printf " \'%s\' " "${content[@]}")")
 
         # process sections
         for index in ${!section_name[@]}; do
             local section="${section_name[$index]}"
-            eval "content=(${section_content[$index]})"
+            content=()
+            while read word; do
+                content+=("$word")
+            done < <(echo "${section_content[$index]}" | xargs -n 1)
+#            eval content=("${section_content[$index]}")
 
 #            echo "section: $section"
-#            echo "content: ${content[@]}"
+#            echo "content: (${#content[@]}) ${content[@]}"
+#            echo "data: ${section_content[$index]}"
+#            echo "========================================================="
 
             # Parse compiler options
             if [[ ${section} =~ $RE_USES ]]; then
