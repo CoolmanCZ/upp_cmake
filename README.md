@@ -17,9 +17,8 @@ This script was created based on discussion [CMake support](http://www.ultimatep
 - Batch processing support
 - import.ext file support
 
-## UPP file options
+## UPP package sections
 UPP package format is described at [Ultimate++ documentation page](https://www.ultimatepp.org/app$ide$upp$en-us.html). Each section of .upp file begins with a keyword and ends with semicolon. The recognized section keywords are:
-- [ ] acceptflags
 - [ ] custom
 - [x] file
 - [ ] flags
@@ -28,9 +27,10 @@ UPP package format is described at [Ultimate++ documentation page](https://www.u
 - [x] static_library
 - [x] link
 - [x] options
-- [ ] mainconfig
 - [ ] target
 - [x] uses
+- **acceptflags** (ignored in CMakeLists generator)
+- **mainconfig** (ignored in CMakeLists generator)
 - **charset** (ignored in CMakeLists generator)
 - **description** (ignored in CMakeLists generator)
 - **optimize_size** (ignored in CMakeLists generator)
@@ -39,13 +39,13 @@ UPP package format is described at [Ultimate++ documentation page](https://www.u
 
 ## Limitation
 Some section options are not taken into account when generate CMakeLists:
-- file (only options relevant to build are mentioned)
--- options
--- depends
--- optimize_speed
--- optimize_size
-- include (all include directories are processed as a relative path)
-- static_library (library is considered as a normal library)
+- file - only options relevant to build are mentioned
+  - options
+  - depends
+  - optimize_speed
+  - optimize_size
+- include - all include directories are processed as a relative path
+- static_library - library is considered as a normal library
 
 # Parameters
 Using of the script is demonstrated in the [example.sh](example.sh), where you should change the variables described below in the text.

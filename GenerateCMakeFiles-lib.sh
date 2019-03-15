@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2016-2018 Radek Malcic
+# Copyright (C) 2016-2019 Radek Malcic
 #
 # All rights reserved.
 #
@@ -63,7 +63,6 @@ RE_STATIC_LIBRARY='^static_library$'
 RE_OPTIONS='^options$'
 RE_FILES='^file$'
 RE_INCLUDE='^include$'
-RE_MAINCONFIG='^mainconfig$'
 RE_SEPARATOR='separator'
 RE_IMPORT='import.ext'
 RE_IMPORT_ADD='^files|^includes'
@@ -72,9 +71,6 @@ RE_FILE_DOT='\.'
 RE_FILE_SPLIT='(options|charset|optimize_speed|highlight)'
 RE_FILE_EXCLUDE='(depends\(\))'
 RE_FILE_PCH='(PCH)'
-
-FLAG_GUI=""
-FLAG_MT=""
 
 UPP_ALL_USES=()
 UPP_ALL_USES_DONE=()
@@ -803,7 +799,11 @@ import_ext_parse()
 
 generate_cmake_header()
 {
-    rm ${OFN}
+
+    if [ -f "${OFN}" ]; then
+        rm "${OFN}"
+    fi
+
     cat > ${OFN} << EOL
 # ${OFN} generated $(export LC_ALL=C; date)
 cmake_minimum_required ( VERSION 2.8.10 )
@@ -863,7 +863,6 @@ generate_cmake_from_upp()
             if [ ! "${test_name}" == "" ]; then
                 if [ ! "${name}" == "" ]; then
                     section_name+=("${name}")
-#                    section_content+=("${content[*]@Q}")
                     section_content+=("$(printf " \'%s\' " "${content[@]}")")
                     content=()
                 fi
@@ -878,7 +877,6 @@ generate_cmake_from_upp()
             content+=("${section_line}")
         done < <(sed 's#\\#/#g' "${upp_ext}")
         section_name+=("${name}")
-#        section_content+=("${content[*]@Q}")
         section_content+=("$(printf " \'%s\' " "${content[@]}")")
 
         # process sections
@@ -888,7 +886,6 @@ generate_cmake_from_upp()
             while read word; do
                 content+=("$word")
             done < <(echo "${section_content[$index]}" | xargs -n 1)
-#            eval content=("${section_content[$index]}")
 
 #            echo "section: $section"
 #            echo "content: (${#content[@]}) ${content[@]}"
@@ -947,18 +944,6 @@ generate_cmake_from_upp()
                 done
             fi
 
-            # Parse mainconfig
-            if [[ ${section} =~ $RE_MAINCONFIG ]]; then
-                for LINE in "${content[@]}"; do
-                    if [[ ${LINE} =~ "GUI" ]]; then
-                        FLAG_GUI="1"
-                    fi
-                    if [[ ${LINE} =~ "MT" ]]; then
-                        FLAG_MT="1"
-                    fi
-                done
-            fi
-
             # Parse files
             if [[ ${section} =~ $RE_FILES ]]; then
                 local list=""
@@ -1001,7 +986,7 @@ generate_cmake_from_upp()
 
                     if [ -d "${list}" ]; then
                         if [ "${GENERATE_VERBOSE}" == "1" ]; then
-                            echo "SKIPPING the directory \"${list}\". Directory can't be added to the source list."
+                            echo "WARNING - skipping the directory \"${list}\". Directory can't be added to the source list."
                         fi
                     elif [ ! -f "${list}" ]; then
                         if [ "${GENERATE_VERBOSE}" == "1" ]; then
@@ -1120,14 +1105,6 @@ generate_cmake_from_upp()
             done
         fi
 
-#        echo >> ${OFN}
-#        echo '# icpp files processing' >> ${OFN}
-#        echo "foreach ( icppFile \${$SOURCE_LIST_ICPP} )" >> ${OFN}
-#        echo '  set ( output_file "${PROJECT_BINARY_DIR}/${CMAKE_PROJECT_NAME}/${icppFile}.cpp" )' >> ${OFN}
-#        echo '  file ( WRITE "${output_file}" "#include \"${CMAKE_CURRENT_SOURCE_DIR}/${icppFile}\"\n" )' >> ${OFN}
-#        echo "  list ( APPEND ${SOURCE_LIST_CPP} \${output_file} )" >> ${OFN}
-#        echo 'endforeach()' >> ${OFN}
-
         echo >> ${OFN}
         echo "# Module properties" >> ${OFN}
         echo "create_cpps_from_icpps()" >> ${OFN}
@@ -1135,12 +1112,6 @@ generate_cmake_from_upp()
         echo "add_library ( ${target_name}${LIB_SUFFIX} \${LIB_TYPE} \${$SOURCE_LIST_CPP} \${$SOURCE_LIST_C})" >> ${OFN}
         echo "target_include_directories ( ${target_name}${LIB_SUFFIX} PUBLIC \${${INCLUDE_LIST}} )" >> ${OFN}
         echo "set_property ( TARGET ${target_name}${LIB_SUFFIX} APPEND PROPERTY COMPILE_OPTIONS \"\${${COMPILE_FLAGS_LIST}}\" )" >> ${OFN}
-
-#        echo >> ${OFN}
-#        echo "# Module dependecies" >> ${OFN}
-#        echo "if ( ${target_name}_${DEPEND_LIST} )" >> ${OFN}
-#        echo "  add_dependencies ( ${target_name}${LIB_SUFFIX} \${${target_name}_$DEPEND_LIST} )" >> ${OFN}
-#        echo "endif()" >> ${OFN}
 
         echo >> ${OFN}
         echo "# Module link" >> ${OFN}
@@ -1202,10 +1173,6 @@ generate_cmake_file()
         echo "sub_dir: ${sub_dir}"
         echo "upp_name: ${upp_name}"
         echo "object_name: ${object_name}"
-    fi
-
-    if [ -f "${sub_dir}/${OFN}" ] && [ "${GENERATE_VERBOSE}" == "1" ]; then
-        echo "File \"${sub_dir}/${OFN}\" already exist!"
     fi
 
     if [ -f "${sub_dir}/${upp_name}" ]; then
@@ -1321,13 +1288,6 @@ generate_main_cmake_file()
     if [ -z "${GENERATE_NOT_PCH}" ] || [ "${GENERATE_NOT_PCH}" != "1" ]; then
         main_definitions+=" -DflagPCH"
     fi
-
-#    if [ -n "${FLAG_MT}" ]; then
-#        echo 'add_definitions ( -DflagMT )' >> ${OFN}
-#    fi
-#    if [ -n "${FLAG_GUI}" ]; then
-#        echo 'add_definitions ( -DflagGUI )' >> ${OFN}
-#    fi
 
     # Begin of the cat (CMakeFiles.txt)
     cat >> ${OFN} << EOL
