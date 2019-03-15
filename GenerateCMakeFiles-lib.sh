@@ -77,6 +77,7 @@ UPP_ALL_USES_DONE=()
 INCLUDE_SYSTEM_LIST=()
 
 SECTIONS=("acceptflags" "charset" "custom" "description" "file" "flags" "include" "library" "static_library" "link" "optimize_size" "optimize_speed" "options" "mainconfig" "noblitz" "target" "uses")
+RE_SKIP_SECTIONS='(acceptflags|mainconfig|charset|description|optimize_size|optimize_speed|noblitz)'
 
 get_section_name()
 {
@@ -882,15 +883,19 @@ generate_cmake_from_upp()
         # process sections
         for index in ${!section_name[@]}; do
             local section="${section_name[$index]}"
+            if [[ "${section}" =~ $RE_SKIP_SECTIONS ]]; then
+                continue;
+            fi
+
             content=()
             while read word; do
                 content+=("$word")
             done < <(echo "${section_content[$index]}" | xargs -n 1)
 
-#            echo "section: $section"
-#            echo "content: (${#content[@]}) ${content[@]}"
-#            echo "data: ${section_content[$index]}"
-#            echo "========================================================="
+#            echo "section: ${section} (${#content[@]})"
+#            echo "content: ${content[@]}"
+#            echo "data   : ${section_content[$index]}"
+#            echo "===================================================================="
 
             # Parse compiler options
             if [[ ${section} =~ $RE_USES ]]; then
