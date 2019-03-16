@@ -40,6 +40,7 @@ INCLUDE_LIST="INCLUDE_LIST"
 SOURCE_LIST_ICPP="SOURCE_LIST_ICPP"
 SOURCE_LIST_RC="SOURCE_LIST_RC"
 COMPILE_FLAGS_LIST="COMPILE_FLAGS_LIST"
+TARGET_RENAME="TARGET_RENAME"
 
 PCH_FILE="PCH_FILE"
 PCH_INCLUDE_LIST="PCH_INCLUDE_LIST"
@@ -63,6 +64,7 @@ RE_STATIC_LIBRARY='^static_library$'
 RE_OPTIONS='^options$'
 RE_FILES='^file$'
 RE_INCLUDE='^include$'
+RE_TARGET='^target$'
 RE_SEPARATOR='separator'
 RE_IMPORT='import.ext'
 RE_IMPORT_ADD='^files|^includes'
@@ -129,12 +131,20 @@ string_trim_spaces_both()
     echo "${line}"
 }
 
-string_remove_comma()
+string_remove_separators()
 {
     local line="${1}"
 
     line="${line//,}"   # Remove ','
     line="${line//;}"   # Remove ';'
+
+echo "${line}"
+}
+
+string_remove_comma()
+{
+    local line="$(string_remove_separators "${1}")"
+
     line="${line//\"}"  # Remove '"'
 
     echo "${line}"
@@ -153,10 +163,13 @@ string_get_in_parenthesis()
 {
     local line="${1}"
 
-    line=`echo "${line}" | sed '1s/[^(]*(//;$s/)[^)]*$//'`  # Get string inside parenthesis
-    line=`echo "${line}" | sed 's/& //g'`                   # Remove all '&'
-
-    echo "${line}"
+    if [[ "${line}" =~ \( ]]; then
+        line=`echo "${line}" | sed '1s/[^(]*(//;$s/)[^)]*$//'`  # Get string inside parenthesis
+        line=`echo "${line}" | sed 's/& //g'`                   # Remove all '&'
+        echo "${line}"
+    else
+        echo
+    fi
 }
 
 string_get_after_parenthesis()
@@ -237,6 +250,12 @@ if_options_replace()
                 ;;
             "RAINBOW")
                 output="BUILD_WITH_RAINBOW"
+                ;;
+            "RELEASE")
+                output="DEFINED flagRELEASE"
+                ;;
+            "DEBUG")
+                output="DEFINED flagDEBUG"
                 ;;
         esac
 
@@ -478,10 +497,38 @@ list_parse()
     fi
 }
 
+target_parse()
+{
+    local line="${1}"
+    local options=""
+    local parameters=""
+
+    echo >> ${OFN}
+    echo "#${1}" >> ${OFN}
+
+    line="${line/#${section}/}"
+    options=$(string_get_in_parenthesis "${line}")
+    if [ -n "${options}" ]; then
+        options=$(if_options_parse_all "${options}")              # Parse options
+    fi
+
+    parameters=$(string_get_after_parenthesis "${line}")
+    parameters="${parameters//;}"
+    parameters="${parameters//\"}"
+    parameters="$(string_trim_spaces_both "${parameters}")"
+
+    if [ -n "${options}" ]; then
+        echo "if (${options})" >> ${OFN}
+        echo "  set ( ${TARGET_RENAME} \"${parameters}\" PARENT_SCOPE )" >> ${OFN}
+        echo "endif()" >> ${OFN}
+    else
+        echo "set ( ${TARGET_RENAME} \"${parameters}\" PARENT_SCOPE )" >> ${OFN}
+    fi
+}
+
 link_parse()
 {
     local line="${1}"
-    local target_name="${2}"
     local options=""
     local parameters=""
 
@@ -489,7 +536,9 @@ link_parse()
     echo "#${1}" >> ${OFN}
 
     options=$(string_get_in_parenthesis "${line}")
-    options=$(if_options_parse_all "${options}")              # Parse options
+    if [ -n "${options}" ]; then
+        options=$(if_options_parse_all "${options}")              # Parse options
+    fi
 
     parameters=$(string_get_after_parenthesis "${line}")
     parameters="${parameters//;}"
@@ -738,14 +787,12 @@ import_ext_parse()
             fi
 
             # Remove ',' and ';'
-            line=${line//,}
-            line=${line//;}
+            line="$(string_remove_separators "${line}")"
 
             # Convert line to array
             read -a line_array <<< ${line}
             for list in "${line_array[@]}"; do
-                list=${list//,}
-                list=${list//;}
+                list="$(string_remove_separators "${list}")"
                 if [[ ! ${list} =~ $RE_IMPORT_ADD ]]; then
                     if [[ ${list} =~ "*" ]]; then
                         added_files+=($(find -name ${list}))
@@ -767,14 +814,12 @@ import_ext_parse()
             fi
 
             # Remove ',' and ';'
-            line=${line//,}
-            line=${line//;}
+            line="$(string_remove_separators "${line}")"
 
             # Convert line to array
             read -a line_array <<< ${line}
             for list in "${line_array[@]}"; do
-                list=${list//,}
-                list=${list//;}
+                list="$(string_remove_separators "${list}")"
                 if [[ ! ${list} =~ $RE_IMPORT_DEl ]]; then
                     if [[ ${list} =~ "*" ]]; then
                         excluded_files+=($(find -name ${list}))
@@ -897,15 +942,22 @@ generate_cmake_from_upp()
 #            echo "data   : ${section_content[$index]}"
 #            echo "===================================================================="
 
+            # Parse target options
+            if [ -n "${main_target}" ] && [[ ${section} =~ $RE_TARGET ]]; then
+                for LINE in "${content[@]}"; do
+                    target_parse "target ${LINE}"
+                done
+            fi
+
             # Parse compiler options
             if [[ ${section} =~ $RE_USES ]]; then
                 for LINE in "${content[@]}"; do
                     if [[ "${LINE:0:1}" == "(" ]] && [[ ${LINE} =~ ';' ]]; then
                         list_parse "uses${LINE}" ${target_name}_${DEPEND_LIST}
                     else
-                        tmp="${LINE//,}"
-                        USES+=(${tmp//;})
-                        add_all_uses "${tmp//;}"
+                        tmp="$(string_remove_separators "${LINE}")"
+                        USES+=(${tmp})
+                        add_all_uses "${tmp}"
                     fi
                 done
             fi
@@ -927,8 +979,8 @@ generate_cmake_from_upp()
                     if [[ "${LINE:0:1}" == "(" ]] && [[ ${LINE} =~ ';' ]]; then
                         list_parse "options${LINE}" ${COMPILE_FLAGS_LIST} "${target_name}"
                     else
-                        tmp="${LINE//,}"
-                        OPTIONS+=(${tmp//;})
+                        tmp="$(string_remove_separators "${LINE}")"
+                        OPTIONS+=(${tmp})
                     fi
                 done
             fi
@@ -936,8 +988,7 @@ generate_cmake_from_upp()
             # Parse include options
             if [[ ${section} =~ $RE_INCLUDE ]]; then
                 for LINE in "${content[@]}"; do
-                    LINE=${LINE//,}
-                    LINE=${LINE//;}
+                    LINE="$(string_remove_separators "${LINE}")"
                     INCLUDE_SYSTEM_LIST+=("${LINE}")
                 done
             fi
@@ -945,7 +996,7 @@ generate_cmake_from_upp()
             # Parse link options
             if [[ ${section} =~ $RE_LINK ]]; then
                 for LINE in "${content[@]}"; do
-                    link_parse "link${LINE}" "${target_name}"
+                    link_parse "link${LINE}"
                 done
             fi
 
@@ -982,19 +1033,18 @@ generate_cmake_from_upp()
                 done
 
                 for list in "${line_array[@]}"; do
-                    list=${list//,}
-                    list=${list//;}
+                    list="$(string_remove_separators "${list}")"
 
                     if [[ "${list}" =~ $RE_FILE_EXCLUDE ]]; then
                         continue;
                     fi
 
                     if [ -d "${list}" ]; then
-                        if [ "${GENERATE_VERBOSE}" == "1" ]; then
+                        if [ "${GENERATE_DEBUG}" == "1" ]; then
                             echo "WARNING - skipping the directory \"${list}\". Directory can't be added to the source list."
                         fi
                     elif [ ! -f "${list}" ]; then
-                        if [ "${GENERATE_VERBOSE}" == "1" ]; then
+                        if [ "${GENERATE_DEBUG}" == "1" ]; then
                             echo "WARNING - file \"${list}\" doesn't exist! It was not added to the source list."
                         fi
                     else
@@ -1987,7 +2037,11 @@ endif()
 
 # Main program link
 target_link_libraries ( ${main_target_name}${BIN_SUFFIX} \${main_$LINK_LIST} \${${main_target_name}_${DEPEND_LIST}} )
-set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES OUTPUT_NAME ${main_target_name} )
+if ( ${TARGET_RENAME} )
+  set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES OUTPUT_NAME \${${TARGET_RENAME}} )
+else()
+  set_target_properties ( ${main_target_name}${BIN_SUFFIX} PROPERTIES OUTPUT_NAME ${main_target_name} )
+endif()
 EOL
 # End of the cat (CMakeFiles.txt)
 

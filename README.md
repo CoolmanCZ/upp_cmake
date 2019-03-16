@@ -27,7 +27,7 @@ UPP package format is described at [Ultimate++ documentation page](https://www.u
 - [x] static_library
 - [x] link
 - [x] options
-- [ ] target
+- [x] target
 - [x] uses
 - **acceptflags** (ignored in CMakeLists generator)
 - **mainconfig** (ignored in CMakeLists generator)
@@ -42,10 +42,11 @@ Some section options are not taken into account when generate CMakeLists:
 - file - only options relevant to build are mentioned
   - options
   - depends
-  - optimize_speed
-  - optimize_size
+  - optimize_speed (ignored)
+  - optimize_size (ignored)
 - include - all include directories are processed as a relative path
 - static_library - library is considered as a normal library
+- target - only main target is renamed
 
 # Parameters
 Using of the script is demonstrated in the [example.sh](example.sh), where you should change the variables described below in the text.
