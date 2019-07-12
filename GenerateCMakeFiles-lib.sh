@@ -1596,10 +1596,11 @@ else()
   set ( STATUS_SHARED "FALSE" )
   set ( BUILD_SHARED_LIBS OFF )
   set ( LIB_TYPE STATIC )
-  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -static -fexceptions" )
+  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -fexceptions" )
+  set ( CMAKE_CXX_STANDARD_LIBRARIES "-static-libgcc -static-libstdc++ \${CMAKE_CXX_STANDARD_LIBRARIES}" )
 
   if ( MINGW )
-      set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -static-libgcc" )
+      set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive" )
   endif()
 
 endif()

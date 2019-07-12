@@ -1,4 +1,5 @@
-2019-03-16 10:08:46 +0100 -         : Add target section support
+2019-07-12 17:16:14 +0200 -         : MINGW static build fix
+2019-03-16 10:08:46 +0100 - 0167eca : Add target section support
 2019-03-15 17:35:32 +0100 - 1b22bf0 : Skip ignored sections
 2019-03-15 14:34:10 +0100 - d47e5e1 : Cosmetics
 2019-03-14 09:46:53 +0100 - f4d07c8 : Replace eval command
