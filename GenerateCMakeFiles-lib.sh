@@ -1599,9 +1599,10 @@ else()
   set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -fexceptions" )
   set ( CMAKE_CXX_STANDARD_LIBRARIES "-static-libgcc -static-libstdc++ \${CMAKE_CXX_STANDARD_LIBRARIES}" )
 
-  if ( MINGW )
-      set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive" )
-  endif()
+# Disadvantage - the win32 ressources of the main exe are replaced by the resources of libwinpthread-1.dll
+#  if ( MINGW )
+#      set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive" )
+#  endif()
 
 endif()
 message ( STATUS "Build with flagSHARED: \${STATUS_SHARED}" )
@@ -1655,6 +1656,10 @@ if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
 
   if ( MINGW )
       get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
+
+	  # Set the minimum supported (API) version to Windows 7
+	  # add_definitions(-DWINVER=0x0601)
+	  # add_definitions(-D_WIN32_WINNT=0x0601)
 
       set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -mwindows" )
 
