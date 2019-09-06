@@ -1596,7 +1596,7 @@ else()
   set ( STATUS_SHARED "FALSE" )
   set ( BUILD_SHARED_LIBS OFF )
   set ( LIB_TYPE STATIC )
-  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -fexceptions" )
+  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -static -fexceptions" )
   set ( CMAKE_CXX_STANDARD_LIBRARIES "-static-libgcc -static-libstdc++ \${CMAKE_CXX_STANDARD_LIBRARIES}" )
 
 # Disadvantage - the win32 ressources of the main exe are replaced by the resources of libwinpthread-1.dll
