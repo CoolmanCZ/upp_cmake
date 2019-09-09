@@ -1597,12 +1597,16 @@ else()
   set ( BUILD_SHARED_LIBS OFF )
   set ( LIB_TYPE STATIC )
   set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -static -fexceptions" )
-  set ( CMAKE_CXX_STANDARD_LIBRARIES "-static-libgcc -static-libstdc++ \${CMAKE_CXX_STANDARD_LIBRARIES}" )
 
-# Disadvantage - the win32 ressources of the main exe are replaced by the resources of libwinpthread-1.dll
-#  if ( MINGW )
-#      set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive" )
-#  endif()
+  if ( MINGW AND WIN32 AND "\${CMAKE_HOST_WIN32}" STREQUAL "")
+	# This link options are put at the end of link command. Required for MinGW cross compilation.
+	# There can be an error: "rsrc merge failure: duplicate leaf: type: 10 (VERSION) name: 1 lang: 409" => it is OK, win32 version information of libwinpthread-1 is skipped
+	set ( CMAKE_CXX_STANDARD_LIBRARIES "\${CMAKE_CXX_STANDARD_LIBRARIES} -Wl,-Bstatic,--whole-archive -lpthread -Wl,--no-whole-archive" )
+
+	# This link options are put at the beginning of link command.
+	# Disadvantage of using linker flags => win32 version information of libwinpthread-1 are used in the output binary instead of win32 version information of main target
+	#set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bstatic,--whole-archive -lpthread -Wl,--no-whole-archive" )
+  endif()
 
 endif()
 message ( STATUS "Build with flagSHARED: \${STATUS_SHARED}" )
