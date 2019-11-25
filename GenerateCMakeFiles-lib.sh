@@ -1991,6 +1991,54 @@ else()
   file ( APPEND \${BUILD_INFO_H} "#define bmUSER \"\$ENV{USER}\"\n" )
 endif()
 
+find_package(Subversion)
+if ( SUBVERSION_FOUND AND EXISTS "\${CMAKE_SOURCE_DIR}/.svn" )
+  Subversion_WC_INFO(\${CMAKE_SOURCE_DIR} SVN)
+endif()
+
+find_package(Git)
+if ( GIT_FOUND AND EXISTS "\${CMAKE_SOURCE_DIR}/.git" )
+  # Get the current working branch
+  execute_process(
+    COMMAND git rev-parse --abbrev-ref HEAD
+    WORKING_DIRECTORY \${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_BRANCH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+
+  # Get the latest abbreviated commit hash of the working branch
+  execute_process(
+    COMMAND git log -1 --format=%h
+    WORKING_DIRECTORY \${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_COMMIT_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+
+  # Get remote tracking of actual branch
+  execute_process(
+    COMMAND git config --local branch.\${GIT_BRANCH}.remote
+    WORKING_DIRECTORY \${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_REMOTE_TRACKING
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+
+  # Get remote tracking URL of actual branch
+  execute_process(
+    COMMAND git config --local remote.\${GIT_REMOTE_TRACKING}.url
+    WORKING_DIRECTORY \${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_REMOTE_URL
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+endif()
+
+if ( GIT_COMMIT_HASH )
+  file (APPEND \${BUILD_INFO_H} "#define bmGIT_REVISION \"\${GIT_COMMIT_HASH}\"\n" )
+  file (APPEND \${BUILD_INFO_H} "#define bmGIT_BRANCH \"\${GIT_BRANCH}\"\n" )
+  file (APPEND \${BUILD_INFO_H} "#define bmGIT_URL \"\${GIT_REMOTE_URL}\"\n" )
+elseif ( SVN_WC_REVISION )
+  file (APPEND \${BUILD_INFO_H} "#define bmSVN_REVISION \"\${SVN_WC_REVISION}\"\n" )
+endif()
+
 # Collect icpp files
 file ( GLOB_RECURSE cpp_ini_files "\${PROJECT_BINARY_DIR}/\${CMAKE_PROJECT_NAME}/*.icpp.cpp" )
 
