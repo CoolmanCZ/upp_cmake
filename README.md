@@ -29,6 +29,7 @@ UPP package format is described at [Ultimate++ documentation page](https://www.u
 - [x] options
 - [x] target
 - [x] uses
+- [x] pkg_config
 - **acceptflags** (ignored in CMakeLists generator)
 - **mainconfig** (ignored in CMakeLists generator)
 - **charset** (ignored in CMakeLists generator)

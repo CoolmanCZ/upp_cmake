@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2016-2019 Radek Malcic
+# Copyright (C) 2016-2020 Radek Malcic
 #
 # All rights reserved.
 #
@@ -60,6 +60,7 @@ RE_BRC='\.(brc)$'
 RE_USES='^uses$'
 RE_LINK='^link$'
 RE_LIBRARY='^library$'
+RE_PKG_CONFIG='^pkg_config$'
 RE_STATIC_LIBRARY='^static_library$'
 RE_OPTIONS='^options$'
 RE_FILES='^file$'
@@ -78,7 +79,7 @@ UPP_ALL_USES=()
 UPP_ALL_USES_DONE=()
 INCLUDE_SYSTEM_LIST=()
 
-SECTIONS=("acceptflags" "charset" "custom" "description" "file" "flags" "include" "library" "static_library" "link" "optimize_size" "optimize_speed" "options" "mainconfig" "noblitz" "target" "uses")
+SECTIONS=("acceptflags" "charset" "custom" "description" "file" "flags" "include" "library" "static_library" "link" "optimize_size" "optimize_speed" "options" "mainconfig" "noblitz" "target" "uses" "pkg_config")
 RE_SKIP_SECTIONS='(acceptflags|mainconfig|charset|description|optimize_size|optimize_speed|noblitz)'
 
 get_section_name()
@@ -384,7 +385,12 @@ add_require_for_lib()
             req_lib_name="GTK2"
             req_lib_param="gtk"
             ;;
-        "gtk-3.0")
+        "gtk+-3.0")
+            req_lib_name="GTK3"
+            req_lib_param="gtk+-3.0"
+            use_pkg="1"
+            ;;
+        "gtk-3.0") #obsolete
             req_lib_name="GTK3"
             req_lib_param="gtk+-3.0"
             use_pkg="1"
@@ -411,6 +417,11 @@ add_require_for_lib()
         echo "      if ( ${link_list} )" >> ${OFN}
         echo "          string ( STRIP \"\${${link_list}}\" ${link_list} )" >> ${OFN}
         echo "      endif()" >> ${OFN}
+        if [ "${check_lib_name}" == "pthread" ]; then
+            echo "      if ( CMAKE_THREAD_LIBS_INIT )" >> ${OFN}
+            echo "      	list ( APPEND ${link_list} \${CMAKE_THREAD_LIBS_INIT} )" >> ${OFN}
+            echo "      endif()" >> ${OFN}
+        fi
         echo "  endif()" >> ${OFN}
 
         if [ "${req_lib_param}" == "gtk" ]; then
@@ -421,6 +432,8 @@ add_require_for_lib()
             echo "      list ( APPEND ${link_list} \${LIBNOTIFY_LIBRARIES} )" >> ${OFN}
             echo "  endif()" >> ${OFN}
         fi
+    else
+        echo "${check_lib_name}"
     fi
 }
 
@@ -477,19 +490,22 @@ list_parse()
             done
         fi
 
-        local tab=""
         if [ -n "${options}" ] ; then
             echo "if (${options})" >> ${OFN}
-            tab="    "
         fi
 
+		local add_link_library=""
         if [ -n "${target_name}" ]; then
             local -a check_library_array=(${parameters})
             for check_library in "${check_library_array[@]}"; do
-                add_require_for_lib "${list}" "${check_library}"
+                add_link_library+="$(add_require_for_lib "${list}" "${check_library}") "
             done
         fi
-        echo "${tab}list ( APPEND ${list} ${parameters} )" >> ${OFN}
+
+        local trim_link_library="$(string_trim_spaces_both "${add_link_library}")"
+        if [ -n "${trim_link_library}" ]; then
+            echo "  list ( APPEND ${list} ${trim_link_library} )" >> ${OFN}
+        fi
 
         if [ -n "${options}" ] ; then
             echo "endif()" >> ${OFN}
@@ -533,7 +549,7 @@ link_parse()
     local parameters=""
 
     echo >> ${OFN}
-    echo "#${1}" >> ${OFN}
+    echo "# ${1}" >> ${OFN}
 
     options=$(string_get_in_parenthesis "${line}")
     if [ -n "${options}" ]; then
@@ -963,10 +979,14 @@ generate_cmake_from_upp()
             fi
 
             # Parse library list options
-            if [[ ${section} =~ $RE_LIBRARY ]] || [[ ${section} =~ $RE_STATIC_LIBRARY ]]; then
+            if [[ ${section} =~ $RE_LIBRARY ]] || [[ ${section} =~ $RE_PKG_CONFIG ]] || [[ ${section} =~ $RE_STATIC_LIBRARY ]]; then
                 for LINE in "${content[@]}"; do
                     if [[ "${LINE:0:1}" == "(" ]] && [[ ${LINE} =~ ';' ]]; then
-                        list_parse "library${LINE}" ${LINK_LIST} "${target_name}"
+                        if [[ ${section} =~ $RE_PKG_CONFIG ]]; then
+                            list_parse "pkg_config${LINE}" ${LINK_LIST} "${target_name}"
+                        else
+                            list_parse "library${LINE}" ${LINK_LIST} "${target_name}"
+                        fi
                     else
                         list_parse "${LINE}" ${LINK_LIST} "${target_name}" "append library"
                     fi
