@@ -275,7 +275,8 @@ if_options_parse()
     local counter=0
     local output=""
     local list=""
-    local OPTIONS=(${1})
+    local options_replacement="${1/|/ | }"
+    local OPTIONS=(${options_replacement})
 
     if [ -n "${OPTIONS}" ]; then
         for list in "${OPTIONS[@]}"; do
@@ -352,54 +353,70 @@ add_require_for_lib()
 {
     local link_list="${1}"
     local check_lib_name="${2}"
+    local pkg_config_module="${3}"
     local req_lib_dir="DIRS"
     local req_lib_name=""
     local req_lib_param=""
     local use_pkg="0"
 
+    if [ "${pkg_config_module}" == "1" ]; then
+        req_lib_name="${check_lib_name}"
+        req_lib_param="${check_lib_name}"
+        use_pkg="1"
+    fi
+
     case "${check_lib_name}" in
-        "png")
+        "png"|"libpng")
             req_lib_name="PNG"
+            use_pkg="0"
             ;;
         "bz2")
             req_lib_name="BZip2"
             req_lib_dir="DIR"
+            use_pkg="0"
             ;;
         "pthread")
             req_lib_name="Threads"
+            use_pkg="0"
             ;;
-        "X11")
+        "x11"|"X11")
             req_lib_name="X11"
             req_lib_dir="DIR"
+            use_pkg="0"
             ;;
         "expat")
             req_lib_name="EXPAT"
+            use_pkg="0"
             ;;
         "freetype")
             req_lib_name="Freetype"
+            use_pkg="0"
+            ;;
+        "freetype2")
+            req_lib_name="Freetype"
+            use_pkg="0"
             ;;
         "ssl")
             req_lib_name="OpenSSL"
+            use_pkg="0"
             ;;
         "gtk-x11-2.0")
             req_lib_name="GTK2"
             req_lib_param="gtk"
+            use_pkg="0"
             ;;
         "gtk+-3.0")
             req_lib_name="GTK3"
             req_lib_param="gtk+-3.0"
             use_pkg="1"
             ;;
-        "gtk-3.0") #obsolete
-            req_lib_name="GTK3"
-            req_lib_param="gtk+-3.0"
-            use_pkg="1"
-            ;;
         "SDL")
             req_lib_name="SDL"
+            use_pkg="0"
             ;;
         "SDL2")
             req_lib_name="SDL2"
+            use_pkg="0"
             ;;
     esac
 
@@ -408,7 +425,7 @@ add_require_for_lib()
             echo "  find_package ( ${req_lib_name} REQUIRED ${req_lib_param} )" >> ${OFN}
         else
             echo "  find_package ( PkgConfig REQUIRED )" >> ${OFN}
-            echo "  pkg_check_modules ( ${req_lib_name} REQUIRED ${req_lib_param})" >> ${OFN}
+            echo "  pkg_check_modules ( ${req_lib_name^^} REQUIRED ${req_lib_param})" >> ${OFN}
         fi
         echo "  if ( ${req_lib_name^^}_FOUND )" >> ${OFN}
         echo "      list ( APPEND ${INCLUDE_LIST} \${${req_lib_name^^}_INCLUDE_${req_lib_dir}} )" >> ${OFN}
@@ -419,19 +436,10 @@ add_require_for_lib()
         echo "      endif()" >> ${OFN}
         if [ "${check_lib_name}" == "pthread" ]; then
             echo "      if ( CMAKE_THREAD_LIBS_INIT )" >> ${OFN}
-            echo "      	list ( APPEND ${link_list} \${CMAKE_THREAD_LIBS_INIT} )" >> ${OFN}
+            echo "          list ( APPEND ${link_list} \${CMAKE_THREAD_LIBS_INIT} )" >> ${OFN}
             echo "      endif()" >> ${OFN}
         fi
         echo "  endif()" >> ${OFN}
-
-        if [ "${req_lib_param}" == "gtk" ]; then
-            echo "  find_package ( PkgConfig REQUIRED )" >> ${OFN}
-            echo "  pkg_check_modules ( LIBNOTIFY REQUIRED libnotify )" >> ${OFN}
-            echo "  if ( LIBNOTIFY_FOUND )" >> ${OFN}
-            echo "      list ( APPEND ${INCLUDE_LIST} \${LIBNOTIFY_INCLUDE_DIR} )" >> ${OFN}
-            echo "      list ( APPEND ${link_list} \${LIBNOTIFY_LIBRARIES} )" >> ${OFN}
-            echo "  endif()" >> ${OFN}
-        fi
     else
         echo "${check_lib_name}"
     fi
@@ -494,11 +502,15 @@ list_parse()
             echo "if (${options})" >> ${OFN}
         fi
 
-		local add_link_library=""
+        local add_link_library=""
         if [ -n "${target_name}" ]; then
+            local pkg_config_module="0"
+            if [[ ${line} =~ ^pkg_config ]]; then
+                pkg_config_module="1"
+            fi
             local -a check_library_array=(${parameters})
             for check_library in "${check_library_array[@]}"; do
-                add_link_library+="$(add_require_for_lib "${list}" "${check_library}") "
+                add_link_library+="$(add_require_for_lib "${list}" "${check_library}" "${pkg_config_module}") "
             done
         fi
 
@@ -1619,13 +1631,13 @@ else()
   set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -static -fexceptions" )
 
   if ( MINGW AND WIN32 AND "\${CMAKE_HOST_WIN32}" STREQUAL "")
-	# This link options are put at the end of link command. Required for MinGW cross compilation.
-	# There can be an error: "rsrc merge failure: duplicate leaf: type: 10 (VERSION) name: 1 lang: 409" => it is OK, win32 version information of libwinpthread-1 is skipped
-	set ( CMAKE_CXX_STANDARD_LIBRARIES "\${CMAKE_CXX_STANDARD_LIBRARIES} -Wl,-Bstatic,--whole-archive -lpthread -Wl,--no-whole-archive" )
+    # This link options are put at the end of link command. Required for MinGW cross compilation.
+    # There can be an error: "rsrc merge failure: duplicate leaf: type: 10 (VERSION) name: 1 lang: 409" => it is OK, win32 version information of libwinpthread-1 is skipped
+    set ( CMAKE_CXX_STANDARD_LIBRARIES "\${CMAKE_CXX_STANDARD_LIBRARIES} -Wl,-Bstatic,--whole-archive -lpthread -Wl,--no-whole-archive" )
 
-	# This link options are put at the beginning of link command.
-	# Disadvantage of using linker flags => win32 version information of libwinpthread-1 are used in the output binary instead of win32 version information of main target
-	#set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bstatic,--whole-archive -lpthread -Wl,--no-whole-archive" )
+    # This link options are put at the beginning of link command.
+    # Disadvantage of using linker flags => win32 version information of libwinpthread-1 are used in the output binary instead of win32 version information of main target
+    #set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bstatic,--whole-archive -lpthread -Wl,--no-whole-archive" )
   endif()
 
 endif()
@@ -1681,9 +1693,9 @@ if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
   if ( MINGW )
       get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 
-	  # Set the minimum supported (API) version to Windows 7
-	  # add_definitions(-DWINVER=0x0601)
-	  # add_definitions(-D_WIN32_WINNT=0x0601)
+      # Set the minimum supported (API) version to Windows 7
+      # add_definitions(-DWINVER=0x0601)
+      # add_definitions(-D_WIN32_WINNT=0x0601)
 
       set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -mwindows" )
 

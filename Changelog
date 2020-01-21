@@ -1,4 +1,5 @@
-2020-01-10 20:17:06 +0100 -         : Add support for pkg_config kayword
+2020-01-21 15:13:18 +0100 -         : Improved processing of pkg_config section
+2020-01-10 20:17:06 +0100 - f5692f7 : Add support for pkg_config kayword
 2019-11-25 11:00:13 +0100 - 1b089bf : build_info.h enhancement with new definitions
 2019-09-09 17:59:22 +0200 - 06aff80 : MINGW static build - cross compilation support
 2019-09-06 20:31:53 +0200 - bd0ee99 : MINGW static build - add -static option
