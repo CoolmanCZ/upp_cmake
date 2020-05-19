@@ -1572,7 +1572,7 @@ else()
   set ( CMAKE_BUILD_TYPE RELEASE )
   add_definitions ( -D_RELEASE )
 
-  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -O3" )
+  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -O2" )
   set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -GS-" )
 
   if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
@@ -1716,7 +1716,7 @@ if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
       endif()
 
       # The optimalization might be broken on MinGW - remove optimalization flag (cross compile).
-      string ( REGEX REPLACE "-O3" "" EXTRA_GCC_FLAGS \${EXTRA_GCC_FLAGS} )
+      string ( REGEX REPLACE "-O2" "" EXTRA_GCC_FLAGS \${EXTRA_GCC_FLAGS} )
 
       get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
   endif()
