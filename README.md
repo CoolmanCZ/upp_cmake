@@ -84,6 +84,7 @@ generate_main_cmake_file "${PROJECT_NAME}" "${PROJECT_FLAGS}"
 * GENERATE_NOT_Cxx - set to "1" - do not use compiler -std=c++14 parameter (compiler parameter is enabled as default)
 * GENERATE_NOT_PARALLEL - set to "1" - do not build with multiple processes (multiple process build is enabled as default)
 * GENERATE_NOT_PCH - set to "1" - do not build with precompiled headers support (precompiled headers support is enabled as default)
+* GENERATE_NOT_REMOVE_UNUSED_CODE - set to "1" - do not use compile and link parameters to remove unused code and functions (unused code and functions are removed as default)
 
 * CMAKE_VERBOSE_OVERWRITE="0" - set to "0" - do not generate cmake verbose makefile output (even when the debug flag is set)
 * CMAKE_VERBOSE_OVERWRITE="1" - set to "1" - always generate cmake verbose makefile output

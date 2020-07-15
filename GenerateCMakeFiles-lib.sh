@@ -1321,6 +1321,11 @@ generate_main_cmake_file()
         main_definitions+=" -DflagPCH"
     fi
 
+    REMOVE_UNUSED_CODE="0"
+    if [ -z "${GENERATE_NOT_REMOVE_UNUSED_CODE}" ] || [ "${GENERATE_NOT_REMOVE_UNUSED_CODE}" != "1" ]; then
+        REMOVE_UNUSED_CODE="1"
+    fi
+
     # Begin of the cat (CMakeFiles.txt)
     cat >> ${OFN} << EOL
 
@@ -1330,6 +1335,9 @@ generate_main_cmake_file()
 # 0 - do not generate cmake verbose makefile output
 # 1 - always generate cmake verbose makefile output
 set ( CMAKE_VERBOSE_OVERWRITE ${CMAKE_VERBOSE_OVERWRITE} )
+
+# Parameter to distinguish whether to build binary with removed unused code and functions
+set ( REMOVE_UNUSED_CODE ${REMOVE_UNUSED_CODE} )
 
 # Project name
 project ( ${main_target_name} )
@@ -1523,11 +1531,6 @@ else()
   set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -O2" )
   set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -GS-" )
 
-  if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
-      set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -ffunction-sections -fdata-sections" )
-      set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -Wl,-s,--gc-sections" )
-  endif()
-
   if ( MSVC )
       if ( "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14|15|16)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14|15|16)X64" )
           set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -release -OPT:REF,ICF" )
@@ -1538,6 +1541,14 @@ else()
 
 endif()
 message ( STATUS "Build type: " \${CMAKE_BUILD_TYPE} )
+
+if ( REMOVE_UNUSED_CODE AND ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG ) )
+  message ( STATUS "Build with remove unused code: TRUE" )
+  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -ffunction-sections -fdata-sections" )
+  set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -Wl,-s,--gc-sections" )
+else()
+  message ( STATUS "Build with remove unused code: FALSE" )
+endif()
 
 if ( CMAKE_VERBOSE_OVERWRITE EQUAL 0 OR CMAKE_VERBOSE_OVERWRITE EQUAL 1 )
   set ( CMAKE_VERBOSE_MAKEFILE \${CMAKE_VERBOSE_OVERWRITE} )

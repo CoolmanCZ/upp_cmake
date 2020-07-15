@@ -1,4 +1,6 @@
-2020-05-19 12:42:09 +0200 -         : Fix VS 16.0 check
+2020-07-15 07:56:53 +0200 -         : New parameter to build binary with removed unused code and functions
+2020-07-15 06:52:39 +0200 - bcb0e84 : Use PkgConfig only to find required packages
+2020-05-19 12:42:09 +0200 - 05c32d6 : Fix VS 16.0 check
 2020-05-19 12:29:52 +0200 - 3535d6f : Add support for VS 16.0
 2020-05-19 11:04:51 +0200 - 5681d8b : Optimization level set to 2
 2020-01-21 15:13:18 +0100 - a49e3e4 : Improved processing of pkg_config section
