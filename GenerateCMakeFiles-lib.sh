@@ -365,61 +365,6 @@ add_require_for_lib()
         use_pkg="1"
     fi
 
-    case "${check_lib_name}" in
-        "png"|"libpng")
-            req_lib_name="PNG"
-            use_pkg="0"
-            ;;
-        "bz2")
-            req_lib_name="BZip2"
-            req_lib_dir="DIR"
-            use_pkg="0"
-            ;;
-        "pthread")
-            req_lib_name="Threads"
-            use_pkg="0"
-            ;;
-        "x11"|"X11")
-            req_lib_name="X11"
-            req_lib_dir="DIR"
-            use_pkg="0"
-            ;;
-        "expat")
-            req_lib_name="EXPAT"
-            use_pkg="0"
-            ;;
-        "freetype")
-            req_lib_name="Freetype"
-            use_pkg="0"
-            ;;
-        "freetype2")
-            req_lib_name="Freetype"
-            use_pkg="0"
-            ;;
-        "ssl")
-            req_lib_name="OpenSSL"
-            use_pkg="0"
-            ;;
-        "gtk-x11-2.0")
-            req_lib_name="GTK2"
-            req_lib_param="gtk"
-            use_pkg="0"
-            ;;
-        "gtk+-3.0")
-            req_lib_name="GTK3"
-            req_lib_param="gtk+-3.0"
-            use_pkg="1"
-            ;;
-        "SDL")
-            req_lib_name="SDL"
-            use_pkg="0"
-            ;;
-        "SDL2")
-            req_lib_name="SDL2"
-            use_pkg="0"
-            ;;
-    esac
-
     if [ -n "${req_lib_name}" ]; then
         if [ "${use_pkg}" == "0" ]; then
             echo "  find_package ( ${req_lib_name} REQUIRED ${req_lib_param} )" >> ${OFN}
