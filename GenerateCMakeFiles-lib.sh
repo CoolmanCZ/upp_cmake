@@ -1426,7 +1426,7 @@ endif()
 # Check supported compilation architecture environment
 if ( "\${FlagDefs}" MATCHES "flagGCC32" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )
   set ( STATUS_COMPILATION "32" )
-  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -m32" )
+  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -m32 -msse2" )
 else()
   set ( STATUS_COMPILATION "64" )
   set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -m64" )
