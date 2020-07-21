@@ -73,7 +73,9 @@ generate_main_cmake_file "${PROJECT_NAME}" "${PROJECT_FLAGS}"
 ### Main configuration parameters
 * UPP_SRC_DIR - directory path of the Ultimate++ source tree
 * PROJECT_NAME - full path to the ultimate++ project file
-* PROJECT_FLAGS - build flags
+* PROJECT_FLAGS - project build and configuration flags
+* PROJECT_EXTRA_COMPILE_FLAGS - extra compile flags
+* PROJECT_EXTRA_LINK_FLAGS - extra link flags
 
 ### Optional configuration parameters
 * EXTRA_INCLUDE_DIR - directory path which can be added as a system include path
@@ -141,15 +143,23 @@ SOLARIS | set | Solaris.
 ### Flags determining the builder (supplied by builder method)
 Flag | Supported | Description
 ---  | ---       | ---
-MSC71    | set | Microsoft Visual C++ 7.1
-MSC8     | set | Microsoft Visual C++ 8.0
-GCC      | set | GCC compiler in implicit mode (32 or 64).
-GCC32    | yes | GCC compiler in 32-bit mode.
-EVC_ARM  |     | Microsoft WinCE C++ ARM complier.
-EVC_MIPS |     | Microsoft WinCE C++ MIPS complier.
-EVC_SH3  |     | Microsoft WinCE C++ SH3 complier.
-EVC_SH4  |     | Microsoft WinCE C++ SH4 complier.
-INTEL    | set | Intel C++.
+MSC71(X64) | set | Microsoft Visual C++ 7.1
+MSC8(X64)  | set | Microsoft Visual C++ 8.0
+MSC9(X64)  | set | Microsoft Visual C++ 9.0
+MSC10(X64) | set | Microsoft Visual C++ 10.0
+MSC11(X64) | set | Microsoft Visual C++ 11.0
+MSC12(X64) | set | Microsoft Visual C++ 12.0
+MSC14(X64) | set | Microsoft Visual C++ 14.0
+MSC15(X64) | set | Microsoft Visual C++ 15.0
+MSC17(X64) | yes | Microsoft Visual C++ 17.0
+MSC19(X64) | yes | Microsoft Visual C++ 19.0
+GCC        | set | GCC compiler in implicit mode (32 or 64).
+GCC32      | yes | GCC compiler in 32-bit mode.
+EVC_ARM    |     | Microsoft WinCE C++ ARM complier.
+EVC_MIPS   |     | Microsoft WinCE C++ MIPS complier.
+EVC_SH3    |     | Microsoft WinCE C++ SH3 complier.
+EVC_SH4    |     | Microsoft WinCE C++ SH4 complier.
+INTEL      | set | Intel C++.
 
 ### Other flags (to be supplied by user)
 Flag | Supported | Description

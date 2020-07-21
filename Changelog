@@ -1,4 +1,5 @@
-2020-07-17 09:51:09 +0200 -         : Add -msse2 flag for 32bit compilation
+2020-07-21 15:17:31 +0200 -         : Extra compilation and link flags
+2020-07-17 09:51:09 +0200 - 2ce1efb : Add -msse2 flag for 32bit compilation
 2020-07-15 07:56:53 +0200 - e47774e : New parameter to build binary with removed unused code and functions
 2020-07-15 06:52:39 +0200 - bcb0e84 : Use PkgConfig only to find required packages
 2020-05-19 12:42:09 +0200 - 05c32d6 : Fix VS 16.0 check
