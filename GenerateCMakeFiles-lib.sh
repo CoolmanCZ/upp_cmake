@@ -1349,7 +1349,7 @@ project ( ${main_target_name} )
 
 # Set the project common path
 set ( UPP_SOURCE_DIRECTORY ${UPP_SRC_DIR} )
-set ( UPP_EXTRA_INCLUDE ${EXTRA_INCLUDE_DIR} )
+set ( UPP_EXTRA_INCLUDE ${PROJECT_EXTRA_INCLUDE_DIR} )
 set ( PROJECT_INC_DIR \${PROJECT_BINARY_DIR}/inc )
 set ( PROJECT_PCH_DIR \${PROJECT_BINARY_DIR}/pch )
 
@@ -1921,8 +1921,8 @@ EOL
         if [ -n "${process_upp}" ]; then
             if [ -d ${UPP_SRC_DIR}/${process_upp} ]; then
                 PKG_DIR=${UPP_SRC_DIR}
-            elif [ -d ${EXTRA_INCLUDE_DIR}/${process_upp} ]; then
-                PKG_DIR=${EXTRA_INCLUDE_DIR}
+            elif [ -d ${PROJECT_EXTRA_INCLUDE_DIR}/${process_upp} ]; then
+                PKG_DIR=${PROJECT_EXTRA_INCLUDE_DIR}
             else
                 pkg_DIR=""
             fi

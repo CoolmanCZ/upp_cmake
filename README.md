@@ -78,8 +78,7 @@ generate_main_cmake_file "${PROJECT_NAME}" "${PROJECT_FLAGS}"
 ### Optional configuration parameters
 * PROJECT_EXTRA_COMPILE_FLAGS - extra compile flags
 * PROJECT_EXTRA_LINK_FLAGS - extra link flags
-
-* EXTRA_INCLUDE_DIR - directory path which can be added as a system include path
+* PROJECT_EXTRA_INCLUDE_DIR - extra directory path which will be added as a system include path
 
 * GENERATE_VERBOSE - set to "1" - enable additional output during script processing on the screen
 * GENERATE_DEBUG - set to "1" - enable debug output during script processing on the screen
