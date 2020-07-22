@@ -433,6 +433,10 @@ list_parse()
         fi
 #            echo "\"list  : $list\""
 
+        if [ -n "${options}" ] ; then
+            echo "if (${options})" >> ${OFN}
+        fi
+
         # Add optional dependency target to generate CMakeLists.txt
         if [[ ${list} =~ "${DEPEND_LIST}" ]]; then
             local -a new_parameters=(${parameters})
@@ -441,10 +445,11 @@ list_parse()
                 parameters+="$(string_replace_dash "${item}${LIB_SUFFIX}") "
                 add_all_uses "${item}"
             done
-        fi
 
-        if [ -n "${options}" ] ; then
-            echo "if (${options})" >> ${OFN}
+            local trim_link_parameters="$(string_trim_spaces_both "${parameters}")"
+            if [ -n "${trim_link_parameters}" ]; then
+                echo "  list ( APPEND ${list} ${trim_link_parameters} )" >> ${OFN}
+            fi
         fi
 
         local add_link_library=""
