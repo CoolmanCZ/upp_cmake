@@ -74,10 +74,11 @@ generate_main_cmake_file "${PROJECT_NAME}" "${PROJECT_FLAGS}"
 * UPP_SRC_DIR - directory path of the Ultimate++ source tree
 * PROJECT_NAME - full path to the ultimate++ project file
 * PROJECT_FLAGS - project build and configuration flags
+
+### Optional configuration parameters
 * PROJECT_EXTRA_COMPILE_FLAGS - extra compile flags
 * PROJECT_EXTRA_LINK_FLAGS - extra link flags
 
-### Optional configuration parameters
 * EXTRA_INCLUDE_DIR - directory path which can be added as a system include path
 
 * GENERATE_VERBOSE - set to "1" - enable additional output during script processing on the screen
