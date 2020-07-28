@@ -105,16 +105,14 @@ get_section_line()
 test_required_binaries()
 {
     # Requirement for generating the CMakeList files
-    local my_sed=$(which sed)
     local my_sort=$(which sort)
     local my_date=$(which date)
     local my_find=$(which find)
     local my_xargs=$(which xargs)
 
-    if [ -z "${my_sed}" ] || [ -z "${my_sort}" ] || [ -z "${my_date}" ] || [ -z "${my_find}" ] || [ -z "${my_xargs}" ] ; then
+    if [ -z "${my_sort}" ] || [ -z "${my_date}" ] || [ -z "${my_find}" ] || [ -z "${my_xargs}" ] ; then
         echo "ERROR - Requirement for generating the CMakeList files failed."
         echo "ERROR - Can not continue -> Exiting!"
-        echo "sed=\"${my_sed}\""
         echo "sort=\"${my_sort}\""
         echo "date=\"${my_date}\""
         echo "find=\"${my_find}\""
@@ -127,7 +125,8 @@ string_trim_spaces_both()
 {
     local line="${1}"
 
-    line="$(echo -e "${line}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    line="${line#"${line%%[![:space:]]*}"}" # remove leading whitespace from a string
+    line="${line%"${line##*[![:space:]]}"}" # remove trailing whitespace from a string
 
     echo "${line}"
 }
@@ -155,7 +154,7 @@ string_replace_dash()
 {
     local line="${1}"
 
-    line=`echo "${line}" | sed 's#/#_#g'`
+    line="${line//\//_}"
 
     echo "${line}"
 }
@@ -165,8 +164,10 @@ string_get_in_parenthesis()
     local line="${1}"
 
     if [[ "${line}" =~ \( ]]; then
-        line=`echo "${line}" | sed '1s/[^(]*(//;$s/)[^)]*$//'`  # Get string inside parenthesis
-        line=`echo "${line}" | sed 's/& //g'`                   # Remove all '&'
+        # Get string inside parenthesis
+        line=${line#*(}
+        line=${line%)*}
+        line="${line//& }"  # Remove all '& '
         echo "${line}"
     else
         echo
@@ -177,7 +178,7 @@ string_get_after_parenthesis()
 {
     local line="${1}"
 
-    line=`echo "${line}" | sed 's/^.*) //'`                 # Get string after the right parenthesis
+    line="${line##*) }"       # Get string after the right parenthesis
 
     echo "${line}"
 }
@@ -186,7 +187,7 @@ string_get_before_parenthesis()
 {
     local line="${1}"
 
-    line=`echo "${line}" | sed 's/(.*$//'`                  # Get string before the left parenthesis
+    line="${line%%(*}"        # Get string before the left parenthesis
 
     echo "${line}"
 }
@@ -282,7 +283,7 @@ if_options_parse()
         for list in "${OPTIONS[@]}"; do
 
             # Don't process alone '!' operand
-            if [[ ${list} =~ '!' ]] && [ ${#list} -eq 1 ]; then
+            if [[ "${list}" =~ '!' ]] && [ "${#list}" -eq 1 ]; then
                 list=""
             fi
 
@@ -299,9 +300,9 @@ if_options_parse()
                     next_operand=" AND "
                 fi
 
-                if [[ ${list} =~ '!' ]]; then
+                if [[ "${list}" =~ '!' ]]; then
                     list="${list//!}"
-                    if [ ${counter} -eq 1 ]; then
+                    if [ "${counter}" -eq 1 ]; then
                         operand="NOT "
                     else
                         operand+="NOT "
@@ -309,7 +310,7 @@ if_options_parse()
                 fi
 
                 # Don't insert 'AND operand as first option parameter
-                if [ ${counter} -eq 1 ] && [[ "${operand}" = " AND " ]]; then
+                if [ "${counter}" -eq 1 ] && [[ "${operand}" = " AND " ]]; then
                     operand=""
                 fi
 
@@ -338,15 +339,15 @@ if_options_parse_all()
 
     if [ -n "${ALL_OPTIONS}" ]; then
         for list in "${ALL_OPTIONS[@]}"; do
-            list=${list//\(}                                  # Remove parenthesis
-            result="("$(if_options_parse "${list}")")"        # Parse options
-            result=`echo "${result}" | sed 's#(OR # OR (#g'`  # Move 'OR'
-            result=`echo "${result}" | sed 's#()##g'`         # Delete empty parenthesis
+            list=${list//\(}                            # Remove parenthesis
+            result="("$(if_options_parse "${list}")")"  # Parse options
+            result="${result//\(OR / OR \(}"            # Move 'OR'
+            result="${result//\(\)}"                    # Delete empty parenthesis
             output+="${result}"
         done
     fi
 
-    echo "${output}" | sed 's#)(#) AND (#g'                   # Put 'AND' between options
+    echo "${output//\)\(/\) AND \(}"                    # Put 'AND' between options
 }
 
 add_require_for_lib()
@@ -367,24 +368,24 @@ add_require_for_lib()
 
     if [ -n "${req_lib_name}" ]; then
         if [ "${use_pkg}" == "0" ]; then
-            echo "  find_package ( ${req_lib_name} REQUIRED ${req_lib_param} )" >> ${OFN}
+            echo "  find_package ( ${req_lib_name} REQUIRED ${req_lib_param} )" >> "${OFN}"
         else
-            echo "  find_package ( PkgConfig REQUIRED )" >> ${OFN}
-            echo "  pkg_check_modules ( ${req_lib_name^^} REQUIRED ${req_lib_param})" >> ${OFN}
+            echo "  find_package ( PkgConfig REQUIRED )" >> "${OFN}"
+            echo "  pkg_check_modules ( ${req_lib_name^^} REQUIRED ${req_lib_param})" >> "${OFN}"
         fi
-        echo "  if ( ${req_lib_name^^}_FOUND )" >> ${OFN}
-        echo "      list ( APPEND ${INCLUDE_LIST} \${${req_lib_name^^}_INCLUDE_${req_lib_dir}} )" >> ${OFN}
-        echo "      list ( APPEND ${link_list} \${${req_lib_name^^}_LIBRARIES} )" >> ${OFN}
-        echo "      # remove leading or trailing whitespace (e.g. for SDL2)" >> ${OFN}
-        echo "      if ( ${link_list} )" >> ${OFN}
-        echo "          string ( STRIP \"\${${link_list}}\" ${link_list} )" >> ${OFN}
-        echo "      endif()" >> ${OFN}
+        echo "  if ( ${req_lib_name^^}_FOUND )" >> "${OFN}"
+        echo "      list ( APPEND ${INCLUDE_LIST} \${${req_lib_name^^}_INCLUDE_${req_lib_dir}} )" >> "${OFN}"
+        echo "      list ( APPEND ${link_list} \${${req_lib_name^^}_LIBRARIES} )" >> "${OFN}"
+        echo "      # remove leading or trailing whitespace (e.g. for SDL2)" >> "${OFN}"
+        echo "      if ( ${link_list} )" >> "${OFN}"
+        echo "          string ( STRIP \"\${${link_list}}\" ${link_list} )" >> "${OFN}"
+        echo "      endif()" >> "${OFN}"
         if [ "${check_lib_name}" == "pthread" ]; then
-            echo "      if ( CMAKE_THREAD_LIBS_INIT )" >> ${OFN}
-            echo "          list ( APPEND ${link_list} \${CMAKE_THREAD_LIBS_INIT} )" >> ${OFN}
-            echo "      endif()" >> ${OFN}
+            echo "      if ( CMAKE_THREAD_LIBS_INIT )" >> "${OFN}"
+            echo "          list ( APPEND ${link_list} \${CMAKE_THREAD_LIBS_INIT} )" >> "${OFN}"
+            echo "      endif()" >> "${OFN}"
         fi
-        echo "  endif()" >> ${OFN}
+        echo "  endif()" >> "${OFN}"
     else
         echo "${check_lib_name}"
     fi
@@ -407,11 +408,11 @@ list_parse()
     local options=""
     local parameters=""
 
-    echo >> ${OFN}
+    echo >> "${OFN}"
     if [ -z "${list_append}" ]; then
-        echo "# ${line}" >> ${OFN}
+        echo "# ${line}" >> "${OFN}"
     else
-        echo "# ${list_append} ${line}" >> ${OFN}
+        echo "# ${list_append} ${line}" >> "${OFN}"
     fi
 #    echo "\"line: $line\""
 
@@ -434,28 +435,28 @@ list_parse()
 #            echo "\"list  : $list\""
 
         if [ -n "${options}" ] ; then
-            echo "if (${options})" >> ${OFN}
+            echo "if (${options})" >> "${OFN}"
         fi
 
         # Add optional dependency target to generate CMakeLists.txt
-        if [[ ${list} =~ "${DEPEND_LIST}" ]]; then
+        if [[ "${list}" =~ "${DEPEND_LIST}" ]]; then
             local -a new_parameters=(${parameters})
             parameters=""
-            for item in ${new_parameters[@]}; do
+            for item in "${new_parameters[@]}"; do
                 parameters+="$(string_replace_dash "${item}${LIB_SUFFIX}") "
                 add_all_uses "${item}"
             done
 
             local trim_link_parameters="$(string_trim_spaces_both "${parameters}")"
             if [ -n "${trim_link_parameters}" ]; then
-                echo "  list ( APPEND ${list} ${trim_link_parameters} )" >> ${OFN}
+                echo "  list ( APPEND ${list} ${trim_link_parameters} )" >> "${OFN}"
             fi
         fi
 
         local add_link_library=""
         if [ -n "${target_name}" ]; then
             local pkg_config_module="0"
-            if [[ ${line} =~ ^pkg_config ]]; then
+            if [[ "${line}" =~ ^pkg_config ]]; then
                 pkg_config_module="1"
             fi
             local -a check_library_array=(${parameters})
@@ -466,11 +467,11 @@ list_parse()
 
         local trim_link_library="$(string_trim_spaces_both "${add_link_library}")"
         if [ -n "${trim_link_library}" ]; then
-            echo "  list ( APPEND ${list} ${trim_link_library} )" >> ${OFN}
+            echo "  list ( APPEND ${list} ${trim_link_library} )" >> "${OFN}"
         fi
 
         if [ -n "${options}" ] ; then
-            echo "endif()" >> ${OFN}
+            echo "endif()" >> "${OFN}"
         fi
     fi
 }
@@ -481,8 +482,8 @@ target_parse()
     local options=""
     local parameters=""
 
-    echo >> ${OFN}
-    echo "#${1}" >> ${OFN}
+    echo >> "${OFN}"
+    echo "#${1}" >> "${OFN}"
 
     line="${line/#${section}/}"
     options=$(string_get_in_parenthesis "${line}")
@@ -496,11 +497,11 @@ target_parse()
     parameters="$(string_trim_spaces_both "${parameters}")"
 
     if [ -n "${options}" ]; then
-        echo "if (${options})" >> ${OFN}
-        echo "  set ( ${TARGET_RENAME} \"${parameters}\" PARENT_SCOPE )" >> ${OFN}
-        echo "endif()" >> ${OFN}
+        echo "if (${options})" >> "${OFN}"
+        echo "  set ( ${TARGET_RENAME} \"${parameters}\" PARENT_SCOPE )" >> "${OFN}"
+        echo "endif()" >> "${OFN}"
     else
-        echo "set ( ${TARGET_RENAME} \"${parameters}\" PARENT_SCOPE )" >> ${OFN}
+        echo "set ( ${TARGET_RENAME} \"${parameters}\" PARENT_SCOPE )" >> "${OFN}"
     fi
 }
 
@@ -510,8 +511,8 @@ link_parse()
     local options=""
     local parameters=""
 
-    echo >> ${OFN}
-    echo "# ${1}" >> ${OFN}
+    echo >> "${OFN}"
+    echo "# ${1}" >> "${OFN}"
 
     options=$(string_get_in_parenthesis "${line}")
     if [ -n "${options}" ]; then
@@ -523,9 +524,9 @@ link_parse()
     parameters="${parameters//\"}"
 
     if [ -n "${options}" ]; then
-        echo "if (${options})" >> ${OFN}
-        echo "  set ( MAIN_TARGET_LINK_FLAGS "\${MAIN_TARGET_LINK_FLAGS} ${parameters}" PARENT_SCOPE )" >> ${OFN}
-        echo "endif()" >> ${OFN}
+        echo "if (${options})" >> "${OFN}"
+        echo "  set ( MAIN_TARGET_LINK_FLAGS "\${MAIN_TARGET_LINK_FLAGS} ${parameters}" PARENT_SCOPE )" >> "${OFN}"
+        echo "endif()" >> "${OFN}"
     fi
 }
 
@@ -536,19 +537,19 @@ if_options_builder()
     local parameters_gcc=""
     local parameters_msvc=""
 
-    if [[ ${options} =~ NOWARNINGS ]]; then
+    if [[ "${options}" =~ NOWARNINGS ]]; then
         parameters_gcc="-w"
         parameters_msvc="-W0"
     fi
 
     if [ -n "${parameters_gcc}" ]; then
-        echo 'if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )' >> ${OFN}
-        echo "  set ( CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE} \"\${CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE}} ${parameters_gcc}\")" >> ${OFN}
-        echo "  set ( CMAKE_C_FLAGS_\${CMAKE_BUILD_TYPE} \"\${CMAKE_C_FLAGS_\${CMAKE_BUILD_TYPE}} ${parameters_gcc}\")" >> ${OFN}
-        echo 'elseif ( MSVC )' >> ${OFN}
-        echo "  set ( CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE} \"\${CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE}} ${parameters_msvc}\")" >> ${OFN}
-        echo "  set ( CMAKE_C_FLAGS_\${CMAKE_BUILD_TYPE} \"\${CMAKE_C_FLAGS_\${CMAKE_BUILD_TYPE}} ${parameters_msvc}\")" >> ${OFN}
-        echo 'endif()' >> ${OFN}
+        echo 'if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )' >> "${OFN}"
+        echo "  set ( CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE} \"\${CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE}} ${parameters_gcc}\")" >> "${OFN}"
+        echo "  set ( CMAKE_C_FLAGS_\${CMAKE_BUILD_TYPE} \"\${CMAKE_C_FLAGS_\${CMAKE_BUILD_TYPE}} ${parameters_gcc}\")" >> "${OFN}"
+        echo 'elseif ( MSVC )' >> "${OFN}"
+        echo "  set ( CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE} \"\${CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE}} ${parameters_msvc}\")" >> "${OFN}"
+        echo "  set ( CMAKE_C_FLAGS_\${CMAKE_BUILD_TYPE} \"\${CMAKE_C_FLAGS_\${CMAKE_BUILD_TYPE}} ${parameters_msvc}\")" >> "${OFN}"
+        echo 'endif()' >> "${OFN}"
     fi
 }
 
@@ -564,27 +565,27 @@ binary_resource_parse()
         local -a binary_array_names
         local -a binary_array_names_library
 
-        mapfile -t lines < ${parse_file}
+        mapfile -t lines < "${parse_file}"
 
         for line in "${lines[@]}"; do
             # Remove DOS line ending
-            line=`echo ${line} | sed $'s/\r$//'`
+            line="${line//[$'\r']/}"
 
             if [ -n "${line}" ]; then
                 local parameter="$(string_get_before_parenthesis "${line}")"
                 parameter="$(string_trim_spaces_both "${parameter}")"
                 local options="$(string_get_in_parenthesis "${line}")"
-                OLD_IFS=${IFS}; IFS=','; read -d '' -ra options_params < <(printf '%s\0' "${options}"); IFS=${OLD_IFS}
+                read -d '' -ra options_params < <(printf '%s\0' "${options}")
 
                 if [ "${parameter}" == "BINARY_ARRAY" ]; then
-                    local symbol_name=$(string_trim_spaces_both "${options_params[0]}")
-                    local symbol_name_array=$(string_trim_spaces_both "${options_params[1]}")
-                    local symbol_file_name=`echo "${options_params[2]}" | sed 's/.*"\(.*\)".*$/\1/'`
-                    local symbol_file_compress=`echo "${options_params[3]}" | sed 's/.*" \(.*\)$/\1/'`
+                    local symbol_name=$(string_trim_spaces_both "${options_params[0]//,}")
+                    local symbol_name_array=$(string_trim_spaces_both "${options_params[1]//,}")
+                    local symbol_file_name=$(string_trim_spaces_both "${options_params[2]//\"}")
+                    local symbol_file_compress="${options_params[4]}"
                 else
-                    local symbol_name=$(string_trim_spaces_both "${options_params[0]}")
-                    local symbol_file_name=`echo "${options_params[1]}" | sed 's/.*"\(.*\)".*$/\1/'`
-                    local symbol_file_compress=`echo "${options_params[1]}" | sed 's/.*" \(.*\)$/\1/'`
+                    local symbol_name=$(string_trim_spaces_both "${options_params[0]//,}")
+                    local symbol_file_name=$(string_trim_spaces_both "${options_params[1]//\"}")
+                    local symbol_file_compress="${options_params[2]}"
                 fi
 
                 if [ -z "${symbol_file_compress}" ]; then
@@ -594,11 +595,11 @@ binary_resource_parse()
                 # Parse BINARY resources
                 if [ "${parameter}" == "BINARY" ]; then
 
-                    echo >> ${OFN}
-                    echo "# BINARY file" >> ${OFN}
-                    echo "create_brc_source ( ${symbol_file_name} ${symbol_name}.cpp ${symbol_name} ${symbol_file_compress} write )" >> ${OFN}
-                    echo "set_source_files_properties ( \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp PROPERTIES GENERATED TRUE )" >> ${OFN}
-                    echo "list ( APPEND ${SOURCE_LIST_CPP} \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp )" >> ${OFN}
+                    echo >> "${OFN}"
+                    echo "# BINARY file" >> "${OFN}"
+                    echo "create_brc_source ( ${symbol_file_name} ${symbol_name}.cpp ${symbol_name} ${symbol_file_compress} write )" >> "${OFN}"
+                    echo "set_source_files_properties ( \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp PROPERTIES GENERATED TRUE )" >> "${OFN}"
+                    echo "list ( APPEND ${SOURCE_LIST_CPP} \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp )" >> "${OFN}"
 
                 # parse BINARY_ARRAY resources
                 elif [ "${parameter}" == "BINARY_ARRAY" ]; then
@@ -611,9 +612,9 @@ binary_resource_parse()
 
                     binary_array_names+=("${symbol_name}_${symbol_name_array}")
 
-                    echo >> ${OFN}
-                    echo "# BINARY_ARRAY file" >> ${OFN}
-                    echo "create_brc_source ( ${symbol_file_name} binary_array.cpp ${symbol_name}_${symbol_name_array} ${symbol_file_compress} ${file_creation} )" >> ${OFN}
+                    echo >> "${OFN}"
+                    echo "# BINARY_ARRAY file" >> "${OFN}"
+                    echo "create_brc_source ( ${symbol_file_name} binary_array.cpp ${symbol_name}_${symbol_name_array} ${symbol_file_compress} ${file_creation} )" >> "${OFN}"
 
                 # parse BINARY_MASK resources
                 elif [ "${parameter}" == "BINARY_MASK" ]; then
@@ -634,9 +635,9 @@ binary_resource_parse()
                                     file_creation="write"
                                 fi
 
-                                echo >> ${OFN}
-                                echo "# BINARY_MASK file" >> ${OFN}
-                                echo "create_brc_source ( ${binary_file} ${symbol_name}.cpp ${symbol_name}_${all_count} ${symbol_file_compress} ${file_creation} )" >> ${OFN}
+                                echo >> "${OFN}"
+                                echo "# BINARY_MASK file" >> "${OFN}"
+                                echo "create_brc_source ( ${binary_file} ${symbol_name}.cpp ${symbol_name}_${all_count} ${symbol_file_compress} ${file_creation} )" >> "${OFN}"
 
                                 all_array_files+=("$(basename "${binary_file}")")
                                 (( all_count++ ))
@@ -644,38 +645,38 @@ binary_resource_parse()
                         done
 
                         # Generate cpp file for the BINARY_MASK
-                        echo >> ${OFN}
-                        echo "# Append additional information of the BINARY_MASK binary resource (${symbol_name})" >> ${OFN}
-                        echo "file ( APPEND \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp \"" >> ${OFN}
-                        echo "int ${symbol_name}_count = ${all_count};" >> ${OFN}
+                        echo >> "${OFN}"
+                        echo "# Append additional information of the BINARY_MASK binary resource (${symbol_name})" >> "${OFN}"
+                        echo "file ( APPEND \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp \"" >> "${OFN}"
+                        echo "int ${symbol_name}_count = ${all_count};" >> "${OFN}"
 
-                        echo "int ${symbol_name}_length[] = {" >> ${OFN}
+                        echo "int ${symbol_name}_length[] = {" >> "${OFN}"
                         for (( i=0; i<${all_count}; i++ )); do
-                            echo "  ${symbol_name}_${i}_length," >> ${OFN}
+                            echo "  ${symbol_name}_${i}_length," >> "${OFN}"
                         done
-                        echo "};" >> ${OFN}
+                        echo "};" >> "${OFN}"
 
-                        echo "unsigned char *${symbol_name}[] = {" >> ${OFN}
+                        echo "unsigned char *${symbol_name}[] = {" >> "${OFN}"
                         for (( i=0; i<${all_count}; i++ )); do
-                            echo "  ${symbol_name}_${i}_," >> ${OFN}
+                            echo "  ${symbol_name}_${i}_," >> "${OFN}"
                         done
-                        echo "};" >> ${OFN}
+                        echo "};" >> "${OFN}"
 
-                        echo "char const *${symbol_name}_files[] = {" >> ${OFN}
+                        echo "char const *${symbol_name}_files[] = {" >> "${OFN}"
                         local binary_filename=""
                         for binary_file_name in "${all_array_files[@]}"; do
-                            echo "  \\\"${binary_file_name}\\\"," >> ${OFN}
+                            echo "  \\\"${binary_file_name}\\\"," >> "${OFN}"
                         done
-                        echo "};" >> ${OFN}
+                        echo "};" >> "${OFN}"
 
-                        echo "\")" >> ${OFN}
-                        echo "set_source_files_properties ( \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp PROPERTIES GENERATED TRUE )" >> ${OFN}
-                        echo "list ( APPEND ${SOURCE_LIST_CPP} \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp )" >> ${OFN}
+                        echo "\")" >> "${OFN}"
+                        echo "set_source_files_properties ( \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp PROPERTIES GENERATED TRUE )" >> "${OFN}"
+                        echo "list ( APPEND ${SOURCE_LIST_CPP} \${CMAKE_CURRENT_BINARY_DIR}/${symbol_name}.cpp )" >> "${OFN}"
 
                     else
-                        echo >> ${OFN}
-                        echo "# BINARY_MASK file" >> ${OFN}
-                        echo "# No files match the mask: '${symbol_file_name}'" >> ${OFN}
+                        echo >> "${OFN}"
+                        echo "# BINARY_MASK file" >> "${OFN}"
+                        echo "# No files match the mask: '${symbol_file_name}'" >> "${OFN}"
                     fi
 
                 fi # BINARY end
@@ -684,7 +685,7 @@ binary_resource_parse()
 
         # Generate cpp file for the BINARY_ARRAY
         if [ -n "${binary_array_names}" ]; then
-#           echo "# ${binary_array_names[@]}" >> ${OFN}
+#           echo "# ${binary_array_names[@]}" >> "${OFN}"
 
             local test_first_iteration
             local binary_array_name_count=0
@@ -692,21 +693,21 @@ binary_resource_parse()
             local binary_array_name_first
             local binary_array_name_second
 
-            echo >> ${OFN}
-            echo "# Append additional information of the BINARY_ARRAY binary resource" >> ${OFN}
-            echo "file ( APPEND \${CMAKE_CURRENT_BINARY_DIR}/binary_array.cpp \"" >> ${OFN}
+            echo >> "${OFN}"
+            echo "# Append additional information of the BINARY_ARRAY binary resource" >> "${OFN}"
+            echo "file ( APPEND \${CMAKE_CURRENT_BINARY_DIR}/binary_array.cpp \"" >> "${OFN}"
 
             for binary_array_record in "${binary_array_names[@]}"; do
                 binary_array_name_split=(${binary_array_record//_[0-9]/ })
                 if [ ! "${binary_array_name_split[0]}" == "${binary_array_name_test}" ]; then
-                    if [ -z ${test_first_iteration} ]; then
+                    if [ -z "${test_first_iteration}" ]; then
                         test_first_iteration="done"
                     else
-                        echo "int ${binary_array_name_test}_count = ${binary_array_name_count};" >> ${OFN}
-                        echo -e "${binary_array_name_first}" >> ${OFN}
-                        echo -e "};\n" >> ${OFN}
-                        echo -e "${binary_array_name_second}" >> ${OFN}
-                        echo -e "};\n" >> ${OFN}
+                        echo "int ${binary_array_name_test}_count = ${binary_array_name_count};" >> "${OFN}"
+                        echo -e "${binary_array_name_first}" >> "${OFN}"
+                        echo -e "};\n" >> "${OFN}"
+                        echo -e "${binary_array_name_second}" >> "${OFN}"
+                        echo -e "};\n" >> "${OFN}"
                         binary_array_name_count=0
                     fi
                     binary_array_name_test=${binary_array_name_split[0]};
@@ -717,14 +718,14 @@ binary_resource_parse()
                 binary_array_name_first+="\n    ${binary_array_record}_length,"
                 binary_array_name_second+="\n   ${binary_array_record}_,"
             done
-            echo "int ${binary_array_name_test}_count = ${binary_array_name_count};" >> ${OFN}
-            echo -e "${binary_array_name_first}" >> ${OFN}
-            echo -e "};" >> ${OFN}
-            echo -e "${binary_array_name_second}" >> ${OFN}
-            echo -e "};" >> ${OFN}
-            echo "\")" >> ${OFN}
-            echo "set_source_files_properties ( \${CMAKE_CURRENT_BINARY_DIR}/binary_array.cpp PROPERTIES GENERATED TRUE )" >> ${OFN}
-            echo "list ( APPEND ${SOURCE_LIST_CPP} \${CMAKE_CURRENT_BINARY_DIR}/binary_array.cpp )" >> ${OFN}
+            echo "int ${binary_array_name_test}_count = ${binary_array_name_count};" >> "${OFN}"
+            echo -e "${binary_array_name_first}" >> "${OFN}"
+            echo -e "};" >> "${OFN}"
+            echo -e "${binary_array_name_second}" >> "${OFN}"
+            echo -e "};" >> "${OFN}"
+            echo "\")" >> "${OFN}"
+            echo "set_source_files_properties ( \${CMAKE_CURRENT_BINARY_DIR}/binary_array.cpp PROPERTIES GENERATED TRUE )" >> "${OFN}"
+            echo "list ( APPEND ${SOURCE_LIST_CPP} \${CMAKE_CURRENT_BINARY_DIR}/binary_array.cpp )" >> "${OFN}"
         fi
     else
         echo "File \"${parse_file}\" not found!"
@@ -742,23 +743,23 @@ import_ext_parse()
     local -a excluded_files
     local -a result
 
-    mapfile -t lines < ${parse_file}
+    mapfile -t lines < "${parse_file}"
 
     for line in "${lines[@]}"; do
         # Remove DOS line ending
-        line=`echo ${line} | sed $'s/\r$//'`
+        line="${line//[$'\r']/}"
 
         # Begin of the add section
-        if [[ ${line} =~ $RE_IMPORT_ADD ]]; then
+        if [[ "${line}" =~ $RE_IMPORT_ADD ]]; then
             files_add=1
         fi
 
         # Begin of the del section
-        if [[ ${line} =~ $RE_IMPORT_DEl ]]; then
+        if [[ "${line}" =~ $RE_IMPORT_DEl ]]; then
             files_del=1
         fi
 
-        if [ ${files_add} -gt 0 ]; then
+        if [ "${files_add}" -gt 0 ]; then
             # End of the add section (line with ';')
             if [[ ${line} =~ ';' ]]; then
                 files_add=2
@@ -768,26 +769,26 @@ import_ext_parse()
             line="$(string_remove_separators "${line}")"
 
             # Convert line to array
-            read -a line_array <<< ${line}
+            read -a line_array <<< "${line}"
             for list in "${line_array[@]}"; do
                 list="$(string_remove_separators "${list}")"
-                if [[ ! ${list} =~ $RE_IMPORT_ADD ]]; then
-                    if [[ ${list} =~ "*" ]]; then
-                        added_files+=($(find -name ${list}))
+                if [[ ! "${list}" =~ $RE_IMPORT_ADD ]]; then
+                    if [[ "${list}" =~ "*" ]]; then
+                        added_files+=($(find -name "${list}"))
                     else
-                        added_files+=($(find -nowarn -samefile ${list} 2>/dev/null))
+                        added_files+=($(find -nowarn -samefile "${list}" 2>/dev/null))
                     fi
                 fi
             done
 
-            if [ ${files_add} -eq 2 ]; then
+            if [ "${files_add}" -eq 2 ]; then
                 files_add=-1
             fi
         fi
 
-        if [ ${files_del} -gt 0 ]; then
+        if [ "${files_del}" -gt 0 ]; then
             # End of the del section (line with ';')
-            if [ ${files_del} -gt 0 ] && [[ ${line} =~ ';' ]]; then
+            if [ "${files_del}" -gt 0 ] && [[ "${line}" =~ ';' ]]; then
                 files_del=2
             fi
 
@@ -795,19 +796,19 @@ import_ext_parse()
             line="$(string_remove_separators "${line}")"
 
             # Convert line to array
-            read -a line_array <<< ${line}
+            read -a line_array <<< "${line}"
             for list in "${line_array[@]}"; do
                 list="$(string_remove_separators "${list}")"
-                if [[ ! ${list} =~ $RE_IMPORT_DEl ]]; then
-                    if [[ ${list} =~ "*" ]]; then
-                        excluded_files+=($(find -name ${list}))
+                if [[ ! "${list}" =~ $RE_IMPORT_DEl ]]; then
+                    if [[ "${list}" =~ "*" ]]; then
+                        excluded_files+=($(find -name "${list}"))
                     else
-                        excluded_files+=($(find -samefile ${list} 2>/dev/null))
+                        excluded_files+=($(find -samefile "${list}" 2>/dev/null))
                     fi
                 fi
             done
 
-            if [ ${files_del} -eq 2 ]; then
+            if [ "${files_del}" -eq 2 ]; then
                 files_del=-1
             fi
         fi
@@ -818,17 +819,17 @@ import_ext_parse()
             result+=(${value})
         fi
     done
-    echo ${result[@]}
+    echo "${result[@]}"
 }
 
 generate_cmake_header()
 {
 
-    if [ -f "${OFN}" ]; then
-        rm "${OFN}"
+    if [ -f ""${OFN}"" ]; then
+        rm ""${OFN}""
     fi
 
-    cat > ${OFN} << EOL
+    cat > "${OFN}" << EOL
 # ${OFN} generated $(export LC_ALL=C; date)
 cmake_minimum_required ( VERSION 2.8.10 )
 
@@ -880,9 +881,11 @@ generate_cmake_from_upp()
         local section_content=()
 
         # parse upp file
-        while read line; do
+        while read -r line; do
+            # Replace '\' to '/'
+            line="${line//\\//}"
             # Remove DOS line ending
-            line=`echo ${line} | sed $'s/\r$//'`
+            line="${line//[$'\r']/}"
             test_name=$(get_section_name "${line}")
             if [ ! "${test_name}" == "" ]; then
                 if [ ! "${name}" == "" ]; then
@@ -899,12 +902,12 @@ generate_cmake_from_upp()
             fi
 
             content+=("${section_line}")
-        done < <(sed 's#\\#/#g' "${upp_ext}")
+        done < "${upp_ext}"
         section_name+=("${name}")
         section_content+=("$(printf " \'%s\' " "${content[@]}")")
 
         # process sections
-        for index in ${!section_name[@]}; do
+        for index in "${!section_name[@]}"; do
             local section="${section_name[$index]}"
             if [[ "${section}" =~ $RE_SKIP_SECTIONS ]]; then
                 continue;
@@ -921,14 +924,14 @@ generate_cmake_from_upp()
 #            echo "===================================================================="
 
             # Parse target options
-            if [ -n "${main_target}" ] && [[ ${section} =~ $RE_TARGET ]]; then
+            if [ -n "${main_target}" ] && [[ "${section}" =~ $RE_TARGET ]]; then
                 for LINE in "${content[@]}"; do
                     target_parse "target ${LINE}"
                 done
             fi
 
             # Parse compiler options
-            if [[ ${section} =~ $RE_USES ]]; then
+            if [[ "${section}" =~ $RE_USES ]]; then
                 for LINE in "${content[@]}"; do
                     if [[ "${LINE:0:1}" == "(" ]] && [[ ${LINE} =~ ';' ]]; then
                         list_parse "uses${LINE}" ${target_name}_${DEPEND_LIST}
@@ -941,25 +944,25 @@ generate_cmake_from_upp()
             fi
 
             # Parse library list options
-            if [[ ${section} =~ $RE_LIBRARY ]] || [[ ${section} =~ $RE_PKG_CONFIG ]] || [[ ${section} =~ $RE_STATIC_LIBRARY ]]; then
+            if [[ "${section}" =~ $RE_LIBRARY ]] || [[ "${section}" =~ $RE_PKG_CONFIG ]] || [[ "${section}" =~ $RE_STATIC_LIBRARY ]]; then
                 for LINE in "${content[@]}"; do
-                    if [[ "${LINE:0:1}" == "(" ]] && [[ ${LINE} =~ ';' ]]; then
-                        if [[ ${section} =~ $RE_PKG_CONFIG ]]; then
-                            list_parse "pkg_config${LINE}" ${LINK_LIST} "${target_name}"
+                    if [[ "${LINE:0:1}" == "(" ]] && [[ "${LINE}" =~ ';' ]]; then
+                        if [[ "${section}" =~ $RE_PKG_CONFIG ]]; then
+                            list_parse "pkg_config${LINE}" "${LINK_LIST}" "${target_name}"
                         else
-                            list_parse "library${LINE}" ${LINK_LIST} "${target_name}"
+                            list_parse "library${LINE}" "${LINK_LIST}" "${target_name}"
                         fi
                     else
-                        list_parse "${LINE}" ${LINK_LIST} "${target_name}" "append library"
+                        list_parse "${LINE}" "${LINK_LIST}" "${target_name}" "append library"
                     fi
                 done
             fi
 
             # Parse options section
-            if [[ ${section} =~ $RE_OPTIONS ]]; then
+            if [[ "${section}" =~ $RE_OPTIONS ]]; then
                 for LINE in "${content[@]}"; do
-                    if [[ "${LINE:0:1}" == "(" ]] && [[ ${LINE} =~ ';' ]]; then
-                        list_parse "options${LINE}" ${COMPILE_FLAGS_LIST} "${target_name}"
+                    if [[ "${LINE:0:1}" == "(" ]] && [[ "${LINE}" =~ ';' ]]; then
+                        list_parse "options${LINE}" "${COMPILE_FLAGS_LIST}" "${target_name}"
                     else
                         tmp="$(string_remove_separators "${LINE}")"
                         OPTIONS+=(${tmp})
@@ -968,7 +971,7 @@ generate_cmake_from_upp()
             fi
 
             # Parse include options
-            if [[ ${section} =~ $RE_INCLUDE ]]; then
+            if [[ "${section}" =~ $RE_INCLUDE ]]; then
                 for LINE in "${content[@]}"; do
                     LINE="$(string_remove_separators "${LINE}")"
                     INCLUDE_SYSTEM_LIST+=("${LINE}")
@@ -976,29 +979,29 @@ generate_cmake_from_upp()
             fi
 
             # Parse link options
-            if [[ ${section} =~ $RE_LINK ]]; then
+            if [[ "${section}" =~ $RE_LINK ]]; then
                 for LINE in "${content[@]}"; do
                     link_parse "link${LINE}"
                 done
             fi
 
             # Parse files
-            if [[ ${section} =~ $RE_FILES ]]; then
+            if [[ "${section}" =~ $RE_FILES ]]; then
                 local list=""
                 local line_array=()
 
                 for LINE in "${content[@]}"; do
                     # Skip lines with "separator" mark
-                    if [[ ${LINE} =~ $RE_SEPARATOR ]]; then
+                    if [[ "${LINE}" =~ $RE_SEPARATOR ]]; then
                         continue
                     fi
 
                     # Find precompiled header option
                     if [[ "${LINE}" =~ $RE_FILE_PCH ]] && [[ "${LINE}" =~ BUILDER_OPTION ]]; then
                         local pch_file=${LINE// */}
-                        echo >> ${OFN}
-                        echo '# Precompiled headers file' >> ${OFN}
-                        echo "set ( ${PCH_FILE} "\${CMAKE_CURRENT_SOURCE_DIR}/${pch_file}" )" >> ${OFN}
+                        echo >> "${OFN}"
+                        echo '# Precompiled headers file' >> "${OFN}"
+                        echo "set ( ${PCH_FILE} "\${CMAKE_CURRENT_SOURCE_DIR}/${pch_file}" )" >> "${OFN}"
                     fi
 
                     # Split lines with charset, options, ...
@@ -1006,9 +1009,9 @@ generate_cmake_from_upp()
                         LINE="${LINE// */}"
                     fi
 
-                    if [[ ${LINE} =~ $RE_IMPORT ]]; then
-                        line_array=($(import_ext_parse ${LINE}))
-                        dir_array=($(dirname ${line_array[@]} | sort -u))
+                    if [[ "${LINE}" =~ $RE_IMPORT ]]; then
+                        line_array=($(import_ext_parse "${LINE}"))
+                        dir_array=($(dirname "${line_array[@]}" | sort -u))
                     else
                         line_array+=(${LINE})
                     fi
@@ -1030,18 +1033,18 @@ generate_cmake_from_upp()
                             echo "WARNING - file \"${list}\" doesn't exist! It was not added to the source list."
                         fi
                     else
-                        if [[ ${list} =~ $RE_C ]]; then         # C/C++ source files
+                        if [[ "${list}" =~ $RE_C ]]; then         # C/C++ source files
                             SOURCE_C+=(${list})
-                        elif [[ ${list} =~ $RE_CPP ]]; then     # C/C++ source files
+                        elif [[ "${list}" =~ $RE_CPP ]]; then     # C/C++ source files
                             SOURCE_CPP+=(${list})
-                        elif [[ ${list} =~ $RE_RC ]]; then      # Windows resource config files
+                        elif [[ "${list}" =~ $RE_RC ]]; then      # Windows resource config files
                             SOURCE_RC+=(${list})
-                        elif [[ ${list} =~ $RE_ICPP ]]; then    # icpp C/C++ source files
+                        elif [[ "${list}" =~ $RE_ICPP ]]; then    # icpp C/C++ source files
                             SOURCE_ICPP+=(${list})
-                        elif [[ ${list} =~ $RE_BRC ]]; then     # BRC resource files
+                        elif [[ "${list}" =~ $RE_BRC ]]; then     # BRC resource files
                             $(binary_resource_parse "$list")
-                            HEADER+=(${list})
-                        elif [[ ${list} =~ $RE_FILE_DOT ]]; then  # header files
+                            HEADER+=("${list}")
+                        elif [[ "${list}" =~ $RE_FILE_DOT ]]; then  # header files
                             HEADER+=(${list})
                         fi
                     fi
@@ -1052,145 +1055,145 @@ generate_cmake_from_upp()
 
         # Create include directory list
         if [ -n "${dir_array}" ]; then
-            echo >> ${OFN}
-            echo "include_directories (" >> ${OFN}
+            echo >> "${OFN}"
+            echo "include_directories (" >> "${OFN}"
             for list in "${dir_array[@]}"; do
                 if [[ " ${list} " != " . " ]]; then
-                    echo "      ${list}" >> ${OFN}
+                    echo "      ${list}" >> "${OFN}"
                 fi
             done
-            echo ")" >> ${OFN}
+            echo ")" >> "${OFN}"
         fi
 
         # Create project option definitions
         if [ -n "${OPTIONS}" ]; then
-            echo >> ${OFN}
-            echo "add_definitions (" >> ${OFN}
+            echo >> "${OFN}"
+            echo "add_definitions (" >> "${OFN}"
             for list in "${OPTIONS[@]}"; do
-                echo "${list}" >> ${OFN}
+                echo "${list}" >> "${OFN}"
             done
-            echo ")" >> ${OFN}
+            echo ")" >> "${OFN}"
         fi
 
         # Create header files list
         if [ -n "${HEADER}" ]; then
-            echo >> ${OFN}
-            echo "list ( APPEND ${HEADER_LIST}" >> ${OFN}
+            echo >> "${OFN}"
+            echo "list ( APPEND ${HEADER_LIST}" >> "${OFN}"
             for list in "${HEADER[@]}"; do
-                echo "      ${list}" >> ${OFN}
+                echo "      ${list}" >> "${OFN}"
             done
-            echo ")" >> ${OFN}
+            echo ")" >> "${OFN}"
         fi
 
         # Create C source files list
         if [ -n "${SOURCE_C}" ]; then
-            echo >> ${OFN}
-            echo "list ( APPEND ${SOURCE_LIST_C}" >> ${OFN}
+            echo >> "${OFN}"
+            echo "list ( APPEND ${SOURCE_LIST_C}" >> "${OFN}"
             for list in "${SOURCE_C[@]}"; do
-                echo "      ${list}" >> ${OFN}
+                echo "      ${list}" >> "${OFN}"
             done
-            echo ")" >> ${OFN}
+            echo ")" >> "${OFN}"
         fi
 
         # Create CPP source files list
         if [ -n "${SOURCE_CPP}" ]; then
-            echo >> ${OFN}
-            echo "list ( APPEND ${SOURCE_LIST_CPP}" >> ${OFN}
+            echo >> "${OFN}"
+            echo "list ( APPEND ${SOURCE_LIST_CPP}" >> "${OFN}"
             for list in "${SOURCE_CPP[@]}"; do
-                echo "      ${list}" >> ${OFN}
+                echo "      ${list}" >> "${OFN}"
             done
-            echo ")" >> ${OFN}
+            echo ")" >> "${OFN}"
         fi
 
         # Create icpp source files list
         if [ -n "${SOURCE_ICPP}" ]; then
-            echo >> ${OFN}
-            echo "list ( APPEND ${SOURCE_LIST_ICPP}" >> ${OFN}
+            echo >> "${OFN}"
+            echo "list ( APPEND ${SOURCE_LIST_ICPP}" >> "${OFN}"
             for list in "${SOURCE_ICPP[@]}"; do
-                echo "      ${list}" >> ${OFN}
+                echo "      ${list}" >> "${OFN}"
             done
-            echo ")" >> ${OFN}
+            echo ")" >> "${OFN}"
         fi
 
         # Create dependency list
         if [ -n "${USES}" ]; then
-            echo >> ${OFN}
-            echo "list ( APPEND ${target_name}_${DEPEND_LIST}" >> ${OFN}
+            echo >> "${OFN}"
+            echo "list ( APPEND ${target_name}_${DEPEND_LIST}" >> "${OFN}"
             for list in "${USES[@]}"; do
                 local dependency_name="$(string_replace_dash "${list}")"
-                echo "      ${dependency_name}${LIB_SUFFIX}" >> ${OFN}
+                echo "      ${dependency_name}${LIB_SUFFIX}" >> "${OFN}"
             done
-            echo ")" >> ${OFN}
+            echo ")" >> "${OFN}"
         fi
 
         # Copy Windows resource config file
         if [ -n "${main_target}" ] && [ -n "${SOURCE_RC}" ] ; then
             for list in "${SOURCE_RC[@]}"; do
                 if [ -f "${list}" ]; then
-                    echo >> ${OFN}
-                    echo "# Copy Windows resource config file to the main program build directory" >> ${OFN}
+                    echo >> "${OFN}"
+                    echo "# Copy Windows resource config file to the main program build directory" >> "${OFN}"
                     local line_rc_params=()
                     while read line_rc; do
-                        if [[ ${line_rc} =~ ICON ]]; then
+                        if [[ "${line_rc}" =~ ICON ]]; then
                             line_rc_params=(${line_rc})
-                            echo "file ( COPY \"${list}\" DESTINATION \${PROJECT_BINARY_DIR}/\${CMAKE_PROJECT_NAME} )" >> ${OFN}
-                            echo "file ( COPY ${line_rc_params[3]} DESTINATION \${PROJECT_BINARY_DIR}/\${CMAKE_PROJECT_NAME} )" >> ${OFN}
+                            echo "file ( COPY \"${list}\" DESTINATION \${PROJECT_BINARY_DIR}/\${CMAKE_PROJECT_NAME} )" >> "${OFN}"
+                            echo "file ( COPY ${line_rc_params[3]} DESTINATION \${PROJECT_BINARY_DIR}/\${CMAKE_PROJECT_NAME} )" >> "${OFN}"
                             break
                         fi
-                    done < ${list}
+                    done < "${list}"
                 fi
             done
         fi
 
-        echo >> ${OFN}
-        echo "# Module properties" >> ${OFN}
-        echo "create_cpps_from_icpps()" >> ${OFN}
-        echo "set_source_files_properties ( \${$HEADER_LIST} PROPERTIES HEADER_FILE_ONLY ON )" >> ${OFN}
-        echo "add_library ( ${target_name}${LIB_SUFFIX} \${LIB_TYPE} \${$SOURCE_LIST_CPP} \${$SOURCE_LIST_C})" >> ${OFN}
-        echo "target_include_directories ( ${target_name}${LIB_SUFFIX} PUBLIC \${${INCLUDE_LIST}} )" >> ${OFN}
-        echo "set_property ( TARGET ${target_name}${LIB_SUFFIX} APPEND PROPERTY COMPILE_OPTIONS \"\${${COMPILE_FLAGS_LIST}}\" )" >> ${OFN}
+        echo >> "${OFN}"
+        echo "# Module properties" >> "${OFN}"
+        echo "create_cpps_from_icpps()" >> "${OFN}"
+        echo "set_source_files_properties ( \${$HEADER_LIST} PROPERTIES HEADER_FILE_ONLY ON )" >> "${OFN}"
+        echo "add_library ( ${target_name}${LIB_SUFFIX} \${LIB_TYPE} \${$SOURCE_LIST_CPP} \${$SOURCE_LIST_C})" >> "${OFN}"
+        echo "target_include_directories ( ${target_name}${LIB_SUFFIX} PUBLIC \${${INCLUDE_LIST}} )" >> "${OFN}"
+        echo "set_property ( TARGET ${target_name}${LIB_SUFFIX} APPEND PROPERTY COMPILE_OPTIONS \"\${${COMPILE_FLAGS_LIST}}\" )" >> "${OFN}"
 
-        echo >> ${OFN}
-        echo "# Module link" >> ${OFN}
-        echo "if ( ${target_name}_${DEPEND_LIST} OR ${LINK_LIST} )" >> ${OFN}
-        echo "  target_link_libraries ( ${target_name}${LIB_SUFFIX} \${${target_name}_${DEPEND_LIST}} \${${LINK_LIST}} )" >> ${OFN}
-        echo "endif()" >> ${OFN}
+        echo >> "${OFN}"
+        echo "# Module link" >> "${OFN}"
+        echo "if ( ${target_name}_${DEPEND_LIST} OR ${LINK_LIST} )" >> "${OFN}"
+        echo "  target_link_libraries ( ${target_name}${LIB_SUFFIX} \${${target_name}_${DEPEND_LIST}} \${${LINK_LIST}} )" >> "${OFN}"
+        echo "endif()" >> "${OFN}"
 
-        echo >> ${OFN}
-        echo '# Precompiled headers settings' >> ${OFN}
-        echo "get_directory_property ( ${PCH_COMPILE_DEFINITIONS} COMPILE_DEFINITIONS )" >> ${OFN}
-        echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${COMPILE_FLAGS_LIST} \"\${${COMPILE_FLAGS_LIST}}\" )" >> ${OFN}
-        echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${PCH_FILE} \"\${${PCH_FILE}}\" )" >> ${OFN}
-        echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${PCH_INCLUDE_LIST} \"\${${INCLUDE_LIST}}\" )" >> ${OFN}
-        echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${PCH_COMPILE_DEFINITIONS} \"\${${PCH_COMPILE_DEFINITIONS}}\" )" >> ${OFN}
-        echo >> ${OFN}
-        echo "list ( LENGTH ${PCH_FILE} ${PCH_FILE}_LENGTH )" >> ${OFN}
-        echo "if ( ${PCH_FILE}_LENGTH GREATER 1 )" >> ${OFN}
-        echo '  message ( FATAL_ERROR "Precompiled headers list can contain only one header file!" )' >> ${OFN}
-        echo 'endif()' >> ${OFN}
-        echo "if ( ${PCH_FILE} AND DEFINED flagPCH )" >> ${OFN}
-        echo "  get_filename_component ( PCH_NAME \${${PCH_FILE}} NAME )" >> ${OFN}
-        echo "  set ( PCH_DIR \${PROJECT_PCH_DIR}/${target_name}${LIB_SUFFIX} )" >> ${OFN}
-        echo '  set ( PCH_HEADER ${PCH_DIR}/${PCH_NAME} )' >> ${OFN}
-        echo '  if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" )' >> ${OFN}
-        echo '      if ( ${CMAKE_VERBOSE_MAKEFILE} EQUAL 1 )' >> ${OFN}
-        echo '        set ( PCH_INCLUDE_PARAMS " -H -Winvalid-pch -include ${PCH_HEADER}" )' >> ${OFN}
-        echo '      else()' >> ${OFN}
-        echo '        set ( PCH_INCLUDE_PARAMS " -Winvalid-pch -include ${PCH_HEADER}" )' >> ${OFN}
-        echo '      endif()' >> ${OFN}
-        echo '  endif()' >> ${OFN}
-        echo '  if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )' >> ${OFN}
-        echo '      set ( PCH_INCLUDE_PARAMS " -Winvalid-pch -include-pch ${PCH_HEADER}.pch" )' >> ${OFN}
-        echo '  endif()' >> ${OFN}
-        echo '  if ( MSVC )' >> ${OFN}
-        echo "      set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES COMPILE_FLAGS \"-Yu\${PCH_NAME} -Fp\${PCH_HEADER}.pch\" )" >> ${OFN}
-        echo "      set_source_files_properties ( \${$SOURCE_LIST_CPP} PROPERTIES COMPILE_FLAGS \"Yc\${PCH_NAME} -Fp\${PCH_HEADER}.pch\" )" >> ${OFN}
-        echo '  endif()' >> ${OFN}
-        echo '  if ( PCH_INCLUDE_PARAMS )' >> ${OFN}
-        echo "      set_source_files_properties ( \${$SOURCE_LIST_CPP} PROPERTIES COMPILE_FLAGS \"\${PCH_INCLUDE_PARAMS}\" )" >> ${OFN}
-        echo '  endif()' >> ${OFN}
-        echo 'endif()' >> ${OFN}
-        echo >> ${OFN}
+        echo >> "${OFN}"
+        echo '# Precompiled headers settings' >> "${OFN}"
+        echo "get_directory_property ( ${PCH_COMPILE_DEFINITIONS} COMPILE_DEFINITIONS )" >> "${OFN}"
+        echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${COMPILE_FLAGS_LIST} \"\${${COMPILE_FLAGS_LIST}}\" )" >> "${OFN}"
+        echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${PCH_FILE} \"\${${PCH_FILE}}\" )" >> "${OFN}"
+        echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${PCH_INCLUDE_LIST} \"\${${INCLUDE_LIST}}\" )" >> "${OFN}"
+        echo "set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES ${PCH_COMPILE_DEFINITIONS} \"\${${PCH_COMPILE_DEFINITIONS}}\" )" >> "${OFN}"
+        echo >> "${OFN}"
+        echo "list ( LENGTH ${PCH_FILE} ${PCH_FILE}_LENGTH )" >> "${OFN}"
+        echo "if ( ${PCH_FILE}_LENGTH GREATER 1 )" >> "${OFN}"
+        echo '  message ( FATAL_ERROR "Precompiled headers list can contain only one header file!" )' >> "${OFN}"
+        echo 'endif()' >> "${OFN}"
+        echo "if ( ${PCH_FILE} AND DEFINED flagPCH )" >> "${OFN}"
+        echo "  get_filename_component ( PCH_NAME \${${PCH_FILE}} NAME )" >> "${OFN}"
+        echo "  set ( PCH_DIR \${PROJECT_PCH_DIR}/${target_name}${LIB_SUFFIX} )" >> "${OFN}"
+        echo '  set ( PCH_HEADER ${PCH_DIR}/${PCH_NAME} )' >> "${OFN}"
+        echo '  if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" )' >> "${OFN}"
+        echo '      if ( ${CMAKE_VERBOSE_MAKEFILE} EQUAL 1 )' >> "${OFN}"
+        echo '        set ( PCH_INCLUDE_PARAMS " -H -Winvalid-pch -include ${PCH_HEADER}" )' >> "${OFN}"
+        echo '      else()' >> "${OFN}"
+        echo '        set ( PCH_INCLUDE_PARAMS " -Winvalid-pch -include ${PCH_HEADER}" )' >> "${OFN}"
+        echo '      endif()' >> "${OFN}"
+        echo '  endif()' >> "${OFN}"
+        echo '  if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )' >> "${OFN}"
+        echo '      set ( PCH_INCLUDE_PARAMS " -Winvalid-pch -include-pch ${PCH_HEADER}.pch" )' >> "${OFN}"
+        echo '  endif()' >> "${OFN}"
+        echo '  if ( MSVC )' >> "${OFN}"
+        echo "      set_target_properties ( ${target_name}${LIB_SUFFIX} PROPERTIES COMPILE_FLAGS \"-Yu\${PCH_NAME} -Fp\${PCH_HEADER}.pch\" )" >> "${OFN}"
+        echo "      set_source_files_properties ( \${$SOURCE_LIST_CPP} PROPERTIES COMPILE_FLAGS \"Yc\${PCH_NAME} -Fp\${PCH_HEADER}.pch\" )" >> "${OFN}"
+        echo '  endif()' >> "${OFN}"
+        echo '  if ( PCH_INCLUDE_PARAMS )' >> "${OFN}"
+        echo "      set_source_files_properties ( \${$SOURCE_LIST_CPP} PROPERTIES COMPILE_FLAGS \"\${PCH_INCLUDE_PARAMS}\" )" >> "${OFN}"
+        echo '  endif()' >> "${OFN}"
+        echo 'endif()' >> "${OFN}"
+        echo >> "${OFN}"
 
     fi
 }
@@ -1213,24 +1216,24 @@ generate_cmake_file()
     fi
 
     if [ -f "${sub_dir}/${upp_name}" ]; then
-        cd ${sub_dir}
+        cd "${sub_dir}"
 
         generate_cmake_header
 
         if [ -n "${cmake_flags}" ]; then
-            echo >> ${OFN}
-            echo "# Module definitions" >> ${OFN}
-            echo "add_definitions ( "${cmake_flags}" )" >> ${OFN}
+            echo >> "${OFN}"
+            echo "# Module definitions" >> "${OFN}"
+            echo "add_definitions ( "${cmake_flags}" )" >> "${OFN}"
         fi
 
         local main_target=""
-        if [[ ${cmake_flags} =~ (flagMAIN) ]]; then
+        if [[ "${cmake_flags}" =~ (flagMAIN) ]]; then
             main_target="true"
         fi
 
         generate_cmake_from_upp "${upp_name}" "${object_name}" "${main_target}"
 
-        cd ${cur_dir}
+        cd "${cur_dir}"
     else
         echo "File \"${sub_dir}/${upp_name}\" doesn't exist!"
     fi
@@ -1272,22 +1275,22 @@ generate_package_file()
 
         local -a sorted_UPP_ALL_USES_DONE=$(printf "%s\n" "${UPP_ALL_USES_DONE[@]}" | sort -u);
 
-        local package_src_name_archive=$(basename ${PROJECT_NAME}).tar.bz2
+        local package_src_name_archive=$(basename "${PROJECT_NAME}").tar.bz2
         local package_src_name_archive_list="package_archive_list.txt"
 
-        echo "CMakeLists.txt" > ${package_src_name_archive_list}
+        echo "CMakeLists.txt" > "${package_src_name_archive_list}"
 
-        find -H $(dirname ${PROJECT_NAME}) -type d '(' -name .svn -o -name .git ')' -prune -o -name '*' -type f >> ${package_src_name_archive_list}
+        find -H $(dirname "${PROJECT_NAME}") -type d '(' -name .svn -o -name .git ')' -prune -o -name '*' -type f >> "${package_src_name_archive_list}"
 
-        echo "${UPP_SRC_DIR}/uppconfig.h" >> ${package_src_name_archive_list}
-        echo "${UPP_SRC_DIR}/guiplatform.h" >> ${package_src_name_archive_list}
+        echo "${UPP_SRC_DIR}/uppconfig.h" >> "${package_src_name_archive_list}"
+        echo "${UPP_SRC_DIR}/guiplatform.h" >> "${package_src_name_archive_list}"
 
-        for pkg_name in ${sorted_UPP_ALL_USES_DONE[@]}; do
-            find ${UPP_SRC_DIR}/${pkg_name} -name '*' -type f >> ${package_src_name_archive_list}
+        for pkg_name in "${sorted_UPP_ALL_USES_DONE[@]}"; do
+            find "${UPP_SRC_DIR}/${pkg_name}" -name '*' -type f >> "${package_src_name_archive_list}"
         done
 
-        tar -c -j -f ${package_src_name_archive} -T ${package_src_name_archive_list}
-        rm ${package_src_name_archive_list}
+        tar -c -j -f "${package_src_name_archive}" -T "${package_src_name_archive_list}"
+        rm "${package_src_name_archive_list}"
 
         echo "... DONE"
     fi
@@ -1332,7 +1335,7 @@ generate_main_cmake_file()
     fi
 
     # Begin of the cat (CMakeFiles.txt)
-    cat >> ${OFN} << EOL
+    cat >> "${OFN}" << EOL
 
 # Overwrite cmake verbose makefile output
 # (e.g. do not generate cmake verbose makefile output even when the debug flag is set)
@@ -1362,14 +1365,14 @@ EOL
 # End of the cat (CMakeFiles.txt)
 
     # include directories relevant to the package
-    local include_dirname=${main_target_dirname}
-    while [ ! "$include_dirname" == "." ]; do
-        echo "include_directories ( BEFORE \${CMAKE_SOURCE_DIR}/${include_dirname} )" >> ${OFN}
-        include_dirname=$(dirname "$include_dirname")
+    local include_dirname="${main_target_dirname}"
+    while [ ! "${include_dirname}" == "." ]; do
+        echo "include_directories ( BEFORE \${CMAKE_SOURCE_DIR}/${include_dirname} )" >> "${OFN}"
+        include_dirname=$(dirname "${include_dirname}")
     done
 
     # Begin of the cat (CMakeFiles.txt)
-    cat >> ${OFN} << EOL
+    cat >> "${OFN}" << EOL
 
 # Set the default path for built executables to the bin directory
 set ( EXECUTABLE_OUTPUT_PATH \${PROJECT_BINARY_DIR}/bin )
@@ -1912,27 +1915,27 @@ EOL
     local dir_include=()
     local dir_add=()
 
-    while [ ${#UPP_ALL_USES_DONE[@]} -lt ${#UPP_ALL_USES[@]} ]; do
+    while [ "${#UPP_ALL_USES_DONE[@]}" -lt "${#UPP_ALL_USES[@]}" ]; do
         local process_upp=$(get_upp_to_process)
 #        echo "num of elements all : ${#UPP_ALL_USES[@]} (${UPP_ALL_USES[@]})"
 #        echo "num of elements done: ${#UPP_ALL_USES_DONE[@]} (${UPP_ALL_USES_DONE[@]})"
 #        echo "process_upp=\"${process_upp}\""
 
         if [ -n "${process_upp}" ]; then
-            if [ -d ${UPP_SRC_DIR}/${process_upp} ]; then
+            if [ -d "${UPP_SRC_DIR}/${process_upp}" ]; then
                 PKG_DIR=${UPP_SRC_DIR}
-            elif [ -d ${PROJECT_EXTRA_INCLUDE_DIR}/${process_upp} ]; then
-                PKG_DIR=${PROJECT_EXTRA_INCLUDE_DIR}
+            elif [ -d "${PROJECT_EXTRA_INCLUDE_DIR}/${process_upp}" ]; then
+                PKG_DIR="${PROJECT_EXTRA_INCLUDE_DIR}"
             else
                 pkg_DIR=""
             fi
 
-            if [ -d ${PKG_DIR}/${process_upp} ]; then
-                if [[ ${process_upp} =~ '/' ]]; then
-                    tmp_upp_name="$(basename ${process_upp}).upp"
-                    generate_cmake_file ${PKG_DIR}/${process_upp}/${tmp_upp_name} "${process_upp}"
+            if [ -d "${PKG_DIR}/${process_upp}" ]; then
+                if [[ "${process_upp}" =~ '/' ]]; then
+                    tmp_upp_name="$(basename "${process_upp}").upp"
+                    generate_cmake_file "${PKG_DIR}/${process_upp}/${tmp_upp_name}" "${process_upp}"
                 else
-                    generate_cmake_file ${PKG_DIR}/${process_upp}/${process_upp}.upp "${process_upp}"
+                    generate_cmake_file "${PKG_DIR}/${process_upp}/${process_upp}".upp "${process_upp}"
                 fi
 
                 # include directories from packages
@@ -1946,21 +1949,21 @@ EOL
         UPP_ALL_USES_DONE+=("${process_upp}")
     done
 
-    echo '# Include dependent directories of the project' >> ${OFN}
+    echo '# Include dependent directories of the project' >> "${OFN}"
     for dir in "${dir_include[@]}"; do
-        echo "$dir" >> ${OFN}
+        echo "$dir" >> "${OFN}"
     done
 
     for dir in "${dir_add[@]}"; do
-        echo "$dir" >> ${OFN}
+        echo "$dir" >> "${OFN}"
     done
 
-    echo "add_subdirectory ( ${main_target_dirname} \${CMAKE_CURRENT_BINARY_DIR}/${main_target_name} )" >> ${OFN}
+    echo "add_subdirectory ( ${main_target_dirname} \${CMAKE_CURRENT_BINARY_DIR}/${main_target_name} )" >> "${OFN}"
 
-    local -a array_library=$(printf "%s\n" "${UPP_ALL_USES_DONE[@]}" | sort -u | sed 's#/#_#g');
+    local -a array_library=$(printf "%s\n" "${UPP_ALL_USES_DONE[@]}" | sort -u );
     local library_dep="${main_target_name}${LIB_SUFFIX};"
     for list_library in ${array_library[@]}; do
-        library_dep+="${list_library}${LIB_SUFFIX};"
+        library_dep+="${list_library//\//_}${LIB_SUFFIX};"
     done
 
     # Link dependecy correction
@@ -1970,7 +1973,7 @@ EOL
     library_dep="${library_dep/ZstdTest-lib/ZstdTest-lib;plugin_zstd-lib}"
 
     # Beginning of the cat (CMakeFiles.txt)
-    cat >> ${OFN} << EOL
+    cat >> "${OFN}" << EOL
 
 # Creation of the file build_info.h
 set ( BUILD_INFO_H \${PROJECT_INC_DIR}/build_info.h )

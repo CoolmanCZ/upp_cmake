@@ -1,4 +1,5 @@
-2020-07-22 18:16:59 +0200 -         : Rename variable EXTRA_INCLUDE_DIR to PROJECT_EXTRA_INCLUDE_DIR
+2020-07-28 23:00:46 +0200 -         : Remove of the sed command usage
+2020-07-22 18:16:59 +0200 - a403d7b : Rename variable EXTRA_INCLUDE_DIR to PROJECT_EXTRA_INCLUDE_DIR
 2020-07-22 13:22:02 +0200 - bccdd4d : README update
 2020-07-22 12:01:16 +0200 - 325c137 : Fix parsing of section uses with conditions
 2020-07-21 15:17:31 +0200 - d340bc8 : Extra compilation and link flags
