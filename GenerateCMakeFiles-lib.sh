@@ -442,7 +442,7 @@ list_parse()
         if [[ "${list}" =~ "${DEPEND_LIST}" ]]; then
             local -a new_parameters=(${parameters})
             parameters=""
-            for item in "${new_parameters[@]}"; do
+            for item in ${new_parameters[@]}; do
                 parameters+="$(string_replace_dash "${item}${LIB_SUFFIX}") "
                 add_all_uses "${item}"
             done
@@ -907,7 +907,7 @@ generate_cmake_from_upp()
         section_content+=("$(printf " \'%s\' " "${content[@]}")")
 
         # process sections
-        for index in "${!section_name[@]}"; do
+        for index in ${!section_name[@]}; do
             local section="${section_name[$index]}"
             if [[ "${section}" =~ $RE_SKIP_SECTIONS ]]; then
                 continue;
@@ -1011,7 +1011,7 @@ generate_cmake_from_upp()
 
                     if [[ "${LINE}" =~ $RE_IMPORT ]]; then
                         line_array=($(import_ext_parse "${LINE}"))
-                        dir_array=($(dirname "${line_array[@]}" | sort -u))
+                        dir_array=($(dirname ${line_array[@]} | sort -u))
                     else
                         line_array+=(${LINE})
                     fi
@@ -1285,7 +1285,7 @@ generate_package_file()
         echo "${UPP_SRC_DIR}/uppconfig.h" >> "${package_src_name_archive_list}"
         echo "${UPP_SRC_DIR}/guiplatform.h" >> "${package_src_name_archive_list}"
 
-        for pkg_name in "${sorted_UPP_ALL_USES_DONE[@]}"; do
+        for pkg_name in ${sorted_UPP_ALL_USES_DONE[@]}; do
             find "${UPP_SRC_DIR}/${pkg_name}" -name '*' -type f >> "${package_src_name_archive_list}"
         done
 
@@ -1915,7 +1915,7 @@ EOL
     local dir_include=()
     local dir_add=()
 
-    while [ "${#UPP_ALL_USES_DONE[@]}" -lt "${#UPP_ALL_USES[@]}" ]; do
+    while [ ${#UPP_ALL_USES_DONE[@]} -lt ${#UPP_ALL_USES[@]} ]; do
         local process_upp=$(get_upp_to_process)
 #        echo "num of elements all : ${#UPP_ALL_USES[@]} (${UPP_ALL_USES[@]})"
 #        echo "num of elements done: ${#UPP_ALL_USES_DONE[@]} (${UPP_ALL_USES_DONE[@]})"
