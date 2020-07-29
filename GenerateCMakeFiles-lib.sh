@@ -216,8 +216,8 @@ if_options_replace()
             "MSC")
                 output="MSVC"
                 ;;
-            "OSX11")
-                output="APPLE"
+            "OSX"|"OSX11")
+                output="\${CMAKE_SYSTEM_NAME} MATCHES Darwin"
                 ;;
             "LINUX")
                 output="\${CMAKE_SYSTEM_NAME} MATCHES Linux"
@@ -237,8 +237,14 @@ if_options_replace()
             "SOLARIS")
                 output="\${CMAKE_SYSTEM_NAME} MATCHES Solaris"
                 ;;
+            "SUNOS")
+                output="\${CMAKE_SYSTEM_NAME} MATCHES SunOS"
+                ;;
             "DRAGONFLY")
-                output="DEFINED flagDRAGONFLY"
+                output="\${CMAKE_SYSTEM_NAME} MATCHES DragonFly"
+                ;;
+            "ANDROID")
+                output="\${CMAKE_SYSTEM_NAME} MATCHES Android"
                 ;;
             "POSIX")
                 output="DEFINED flagPOSIX"
@@ -839,7 +845,7 @@ generate_cmake_header()
 
     cat > "${OFN}" << EOL
 # ${OFN} generated ${GENERATE_DATE}
-cmake_minimum_required ( VERSION 2.8.10 )
+cmake_minimum_required ( VERSION 3.4.1 )
 
 #################################################
 # In-Source builds are strictly prohibited.
@@ -1406,6 +1412,11 @@ if ( WIN32 )
   remove_definitions( -DflagNETBSD )
   remove_definitions( -DflagOPENBSD )
   remove_definitions( -DflagSOLARIS )
+  remove_definitions( -DflagSUNOS )
+  remove_definitions( -DflagOSX )
+  remove_definitions( -DflagOSX11 )
+  remove_definitions( -DflagDRAGONFLY )
+  remove_definitions( -DflagANDROID )
 
   if ( NOT "\${FlagDefs}" MATCHES "flagWIN32" )
     add_definitions ( -DflagWIN32 )
@@ -1422,7 +1433,7 @@ else()
     add_definitions( -DflagLINUX )
   endif()
 
-  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "BSDOS" AND NOT "\${FlagDefs}" MATCHES "flagBSD" )
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "BSD" AND NOT "\${FlagDefs}" MATCHES "flagBSD" )
     add_definitions( -DflagBSD )
   endif()
 
@@ -1442,8 +1453,20 @@ else()
     add_definitions( -DflagSOLARIS )
   endif()
 
-  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "SunOS" AND NOT "\${FlagDefs}" MATCHES "flagSOLARIS" )
-    add_definitions( -DflagSOLARIS )
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "SunOS" AND NOT "\${FlagDefs}" MATCHES "flagSUNOS" )
+    add_definitions( -DflagSUNOS )
+  endif()
+
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" AND NOT "\${FlagDefs}" MATCHES "flagOSX" )
+    add_definitions( -DflagOSX )
+  endif()
+
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly" AND NOT "\${FlagDefs}" MATCHES "flagDRAGONFLY" )
+    add_definitions( -DflagDRAGONFLY )
+  endif()
+
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Android" AND NOT "\${FlagDefs}" MATCHES "flagANDROID" )
+    add_definitions( -DflagANDROID )
   endif()
 
 endif()

@@ -142,8 +142,10 @@ FREEBSD   | set | FreeBSD
 NETBSD    | set | NetBSD
 OPENBSD   | set | OpenBSD
 SOLARIS   | set | Solaris
-SOLARIS   | set | SunOS
-DRAGONFLY | yes | DragonFly
+SUNOS     | set | SunOS
+OSX       | set | Darwin
+DRAGONFLY | set | DragonFly
+ANDROID   | set | Android
 
 ### Flags determining the builder (supplied by builder method)
 Flag | Supported | Description
