@@ -220,17 +220,23 @@ if_options_replace()
             "LINUX")
                 output="\${CMAKE_SYSTEM_NAME} MATCHES Linux"
                 ;;
-            "FREEBSD")
-                output="\${CMAKE_SYSTEM_NAME} MATCHES FreeBSD"
-                ;;
-            "DRAGONFLY")
-                output="\${CMAKE_SYSTEM_NAME} MATCHES DragonFly"
-                ;;
             "BSD")
                 output="\${CMAKE_SYSTEM_NAME} MATCHES BSD"
                 ;;
+            "FREEBSD")
+                output="\${CMAKE_SYSTEM_NAME} MATCHES FreeBSD"
+                ;;
+            "NETBSD")
+                output="\${CMAKE_SYSTEM_NAME} MATCHES NetBSD"
+                ;;
+            "OPENBSD")
+                output="\${CMAKE_SYSTEM_NAME} MATCHES OpenBSD"
+                ;;
             "SOLARIS")
                 output="\${CMAKE_SYSTEM_NAME} MATCHES Solaris"
+                ;;
+            "DRAGONFLY")
+                output="DEFINED flagDRAGONFLY"
                 ;;
             "POSIX")
                 output="DEFINED flagPOSIX"
@@ -1393,7 +1399,10 @@ get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 if ( WIN32 )
   remove_definitions( -DflagPOSIX )
   remove_definitions( -DflagLINUX )
+  remove_definitions( -DflagBSD )
   remove_definitions( -DflagFREEBSD )
+  remove_definitions( -DflagNETBSD )
+  remove_definitions( -DflagOPENBSD )
   remove_definitions( -DflagSOLARIS )
 
   if ( NOT "\${FlagDefs}" MATCHES "flagWIN32" )
@@ -1411,11 +1420,27 @@ else()
     add_definitions( -DflagLINUX )
   endif()
 
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "BSDOS" AND NOT "\${FlagDefs}" MATCHES "flagBSD" )
+    add_definitions( -DflagBSD )
+  endif()
+
   if ( \${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" AND NOT "\${FlagDefs}" MATCHES "flagFREEBSD" )
     add_definitions( -DflagFREEBSD )
   endif()
 
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" AND NOT "\${FlagDefs}" MATCHES "flagNETBSD" )
+    add_definitions( -DflagNETBSD )
+  endif()
+
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD" AND NOT "\${FlagDefs}" MATCHES "flagOPENBSD" )
+    add_definitions( -DflagOPENBSD )
+  endif()
+
   if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Solaris" AND NOT "\${FlagDefs}" MATCHES "flagSOLARIS" )
+    add_definitions( -DflagSOLARIS )
+  endif()
+
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "SunOS" AND NOT "\${FlagDefs}" MATCHES "flagSOLARIS" )
     add_definitions( -DflagSOLARIS )
   endif()
 

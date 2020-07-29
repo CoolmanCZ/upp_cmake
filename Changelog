@@ -1,4 +1,5 @@
-2020-07-28 23:18:57 +0200 -         : Fix of a archive generation
+2020-07-29 07:51:35 +0200 -         : OpenBSD, NetBSD and SunOS platform detection improvement
+2020-07-28 23:18:57 +0200 - 1a2fd15 : Fix of a archive generation
 2020-07-28 23:00:46 +0200 - 4fe8292 : Remove of the sed command usage
 2020-07-22 18:16:59 +0200 - a403d7b : Rename variable EXTRA_INCLUDE_DIR to PROJECT_EXTRA_INCLUDE_DIR
 2020-07-22 13:22:02 +0200 - bccdd4d : README update

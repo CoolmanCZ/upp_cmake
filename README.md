@@ -134,11 +134,16 @@ BLITZ         |     | Use blitz build.
 ### Platform flags
 Flag | Supported | Description
 ---  | ---       | ---
-WIN32   | set | Win32.
-POSIX   | set | Anything else then WIN32.
-LINUX   | set | Linux.
-FREEBSD | set | FreeBSD.
-SOLARIS | set | Solaris.
+WIN32     | set | Win32
+POSIX     | set | Anything else then WIN32
+LINUX     | set | Linux
+BSD       | set | BSD/OS
+FREEBSD   | set | FreeBSD
+NETBSD    | set | NetBSD
+OPENBSD   | set | OpenBSD
+SOLARIS   | set | Solaris
+SOLARIS   | set | SunOS
+DRAGONFLY | yes | DragonFly
 
 ### Flags determining the builder (supplied by builder method)
 Flag | Supported | Description
