@@ -29,6 +29,8 @@
 
 GENERATE_CMAKE_VERSION="1.0"
 
+GENERATE_DATE="$(export LC_ALL=C; date)"
+
 OFN="CMakeLists.txt"        # Output file name
 
 LINK_LIST="LINK_LIST"
@@ -105,10 +107,10 @@ get_section_line()
 test_required_binaries()
 {
     # Requirement for generating the CMakeList files
-    local my_sort=$(which sort)
-    local my_date=$(which date)
-    local my_find=$(which find)
-    local my_xargs=$(which xargs)
+    local my_sort="$(which sort)"
+    local my_date="$(which date)"
+    local my_find="$(which find)"
+    local my_xargs="$(which xargs)"
 
     if [ -z "${my_sort}" ] || [ -z "${my_date}" ] || [ -z "${my_find}" ] || [ -z "${my_xargs}" ] ; then
         echo "ERROR - Requirement for generating the CMakeList files failed."
@@ -320,7 +322,7 @@ if_options_parse()
                     operand=""
                 fi
 
-                list=$(if_options_replace "${list}")
+                list="$(if_options_replace "${list}")"
                 output+="${operand}${list}"
             fi
 
@@ -427,15 +429,15 @@ list_parse()
     else
         if [ -z "${list_append}" ]; then
             options=$(string_get_in_parenthesis "${line}")
-            options=$(if_options_parse_all "${options}")              # Parse options
+            options=$(if_options_parse_all "${options}")            # Parse options
 #            echo "\"option: $options\""
 
-            parameters=$(string_get_after_parenthesis "${line}")
-            parameters=$(string_remove_comma "${parameters}")
+            parameters="$(string_get_after_parenthesis "${line}")"
+            parameters="$(string_remove_comma "${parameters}")"
 #            echo "\"param : $parameters\""
         else
 #            echo "\"option:\""
-            parameters=$(string_remove_comma "${line}")
+            parameters="$(string_remove_comma "${line}")"
 #            echo "\"param : $parameters\""
         fi
 #            echo "\"list  : $list\""
@@ -446,7 +448,7 @@ list_parse()
 
         # Add optional dependency target to generate CMakeLists.txt
         if [[ "${list}" =~ "${DEPEND_LIST}" ]]; then
-            local -a new_parameters=(${parameters})
+            local -a new_parameters=("${parameters}")
             parameters=""
             for item in ${new_parameters[@]}; do
                 parameters+="$(string_replace_dash "${item}${LIB_SUFFIX}") "
@@ -492,12 +494,12 @@ target_parse()
     echo "#${1}" >> "${OFN}"
 
     line="${line/#${section}/}"
-    options=$(string_get_in_parenthesis "${line}")
+    options="$(string_get_in_parenthesis "${line}")"
     if [ -n "${options}" ]; then
-        options=$(if_options_parse_all "${options}")              # Parse options
+        options="$(if_options_parse_all "${options}")"              # Parse options
     fi
 
-    parameters=$(string_get_after_parenthesis "${line}")
+    parameters="$(string_get_after_parenthesis "${line}")"
     parameters="${parameters//;}"
     parameters="${parameters//\"}"
     parameters="$(string_trim_spaces_both "${parameters}")"
@@ -520,12 +522,12 @@ link_parse()
     echo >> "${OFN}"
     echo "# ${1}" >> "${OFN}"
 
-    options=$(string_get_in_parenthesis "${line}")
+    options="$(string_get_in_parenthesis "${line}")"
     if [ -n "${options}" ]; then
-        options=$(if_options_parse_all "${options}")              # Parse options
+        options="$(if_options_parse_all "${options}")"              # Parse options
     fi
 
-    parameters=$(string_get_after_parenthesis "${line}")
+    parameters="$(string_get_after_parenthesis "${line}")"
     parameters="${parameters//;}"
     parameters="${parameters//\"}"
 
@@ -539,7 +541,7 @@ link_parse()
 if_options_builder()
 {
     local line="${1}"
-    local options=$(string_get_after_parenthesis "${line}")
+    local options="$(string_get_after_parenthesis "${line}")"
     local parameters_gcc=""
     local parameters_msvc=""
 
@@ -584,13 +586,13 @@ binary_resource_parse()
                 read -d '' -ra options_params < <(printf '%s\0' "${options}")
 
                 if [ "${parameter}" == "BINARY_ARRAY" ]; then
-                    local symbol_name=$(string_trim_spaces_both "${options_params[0]//,}")
-                    local symbol_name_array=$(string_trim_spaces_both "${options_params[1]//,}")
-                    local symbol_file_name=$(string_trim_spaces_both "${options_params[2]//\"}")
+                    local symbol_name="$(string_trim_spaces_both "${options_params[0]//,}")"
+                    local symbol_name_array="$(string_trim_spaces_both "${options_params[1]//,}")"
+                    local symbol_file_name="$(string_trim_spaces_both "${options_params[2]//\"}")"
                     local symbol_file_compress="${options_params[4]}"
                 else
-                    local symbol_name=$(string_trim_spaces_both "${options_params[0]//,}")
-                    local symbol_file_name=$(string_trim_spaces_both "${options_params[1]//\"}")
+                    local symbol_name="$(string_trim_spaces_both "${options_params[0]//,}")"
+                    local symbol_file_name="$(string_trim_spaces_both "${options_params[1]//\"}")"
                     local symbol_file_compress="${options_params[2]}"
                 fi
 
@@ -625,7 +627,7 @@ binary_resource_parse()
                 # parse BINARY_MASK resources
                 elif [ "${parameter}" == "BINARY_MASK" ]; then
 
-                    local -a binary_mask_files=($(eval echo "${symbol_file_name}"))
+                    local -a binary_mask_files=("$(eval echo "${symbol_file_name}")")
 
                     if [ -n "${binary_mask_files}" ]; then
                         local all_count=0
@@ -780,9 +782,9 @@ import_ext_parse()
                 list="$(string_remove_separators "${list}")"
                 if [[ ! "${list}" =~ $RE_IMPORT_ADD ]]; then
                     if [[ "${list}" =~ "*" ]]; then
-                        added_files+=($(find -name "${list}"))
+                        added_files+=("$(find -name "${list}")")
                     else
-                        added_files+=($(find -nowarn -samefile "${list}" 2>/dev/null))
+                        added_files+=("$(find -nowarn -samefile "${list}" 2>/dev/null)")
                     fi
                 fi
             done
@@ -807,9 +809,9 @@ import_ext_parse()
                 list="$(string_remove_separators "${list}")"
                 if [[ ! "${list}" =~ $RE_IMPORT_DEl ]]; then
                     if [[ "${list}" =~ "*" ]]; then
-                        excluded_files+=($(find -name "${list}"))
+                        excluded_files+=("$(find -name "${list}")")
                     else
-                        excluded_files+=($(find -samefile "${list}" 2>/dev/null))
+                        excluded_files+=("$(find -samefile "${list}" 2>/dev/null)")
                     fi
                 fi
             done
@@ -836,7 +838,7 @@ generate_cmake_header()
     fi
 
     cat > "${OFN}" << EOL
-# ${OFN} generated $(export LC_ALL=C; date)
+# ${OFN} generated ${GENERATE_DATE}
 cmake_minimum_required ( VERSION 2.8.10 )
 
 #################################################
@@ -892,7 +894,7 @@ generate_cmake_from_upp()
             line="${line//\\//}"
             # Remove DOS line ending
             line="${line//[$'\r']/}"
-            test_name=$(get_section_name "${line}")
+            test_name="$(get_section_name "${line}")"
             if [ ! "${test_name}" == "" ]; then
                 if [ ! "${name}" == "" ]; then
                     section_name+=("${name}")
@@ -902,7 +904,7 @@ generate_cmake_from_upp()
                 name="${test_name}"
             fi
 
-            section_line=$(get_section_line "${name}" "${line}")
+            section_line="$(get_section_line "${name}" "${line}")"
             if [ "${section_line}" == "" ]; then
                 continue;
             fi
@@ -1016,8 +1018,8 @@ generate_cmake_from_upp()
                     fi
 
                     if [[ "${LINE}" =~ $RE_IMPORT ]]; then
-                        line_array=($(import_ext_parse "${LINE}"))
-                        dir_array=($(dirname ${line_array[@]} | sort -u))
+                        line_array=("$(import_ext_parse "${LINE}")")
+                        dir_array=("$(dirname ${line_array[@]} | sort -u)")
                     else
                         line_array+=(${LINE})
                     fi
@@ -1208,9 +1210,9 @@ generate_cmake_file()
 {
     local param1="$(string_remove_comma "${1}")"
     local param2="$(string_remove_comma "${2}")"
-    local cur_dir=$(pwd)
-    local sub_dir=$(dirname "${param1}")
-    local upp_name=$(basename "${param1}")
+    local cur_dir="$(pwd)"
+    local sub_dir="$(dirname "${param1}")"
+    local upp_name="$(basename "${param1}")"
     local object_name="${param2}"
     local cmake_flags="${3}"
 
@@ -1281,7 +1283,7 @@ generate_package_file()
 
         local -a sorted_UPP_ALL_USES_DONE=$(printf "%s\n" "${UPP_ALL_USES_DONE[@]}" | sort -u);
 
-        local package_src_name_archive=$(basename "${PROJECT_NAME}").tar.bz2
+        local package_src_name_archive="$(basename "${PROJECT_NAME}").tar.bz2"
         local package_src_name_archive_list="package_archive_list.txt"
 
         echo "CMakeLists.txt" > "${package_src_name_archive_list}"
@@ -1306,8 +1308,8 @@ generate_main_cmake_file()
 {
     local main_target="${1}"
     local main_definitions="${2//\"}"
-    local main_target_dirname=$(dirname "${1}")
-    local main_target_basename=$(basename "${1}")
+    local main_target_dirname="$(dirname "${1}")"
+    local main_target_basename="$(basename "${1}")"
     local main_target_name="${main_target_basename%%.*}"
 
     if [ ! -f "${main_target}" ]; then
@@ -1374,7 +1376,7 @@ EOL
     local include_dirname="${main_target_dirname}"
     while [ ! "${include_dirname}" == "." ]; do
         echo "include_directories ( BEFORE \${CMAKE_SOURCE_DIR}/${include_dirname} )" >> "${OFN}"
-        include_dirname=$(dirname "${include_dirname}")
+        include_dirname="$(dirname "${include_dirname}")"
     done
 
     # Begin of the cat (CMakeFiles.txt)
@@ -1941,7 +1943,7 @@ EOL
     local dir_add=()
 
     while [ ${#UPP_ALL_USES_DONE[@]} -lt ${#UPP_ALL_USES[@]} ]; do
-        local process_upp=$(get_upp_to_process)
+        local process_upp="$(get_upp_to_process)"
 #        echo "num of elements all : ${#UPP_ALL_USES[@]} (${UPP_ALL_USES[@]})"
 #        echo "num of elements done: ${#UPP_ALL_USES_DONE[@]} (${UPP_ALL_USES_DONE[@]})"
 #        echo "process_upp=\"${process_upp}\""
