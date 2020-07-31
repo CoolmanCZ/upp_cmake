@@ -21,7 +21,7 @@ This script was created based on discussion [CMake support](http://www.ultimatep
 UPP package format is described at [Ultimate++ documentation page](https://www.ultimatepp.org/app$ide$upp$en-us.html). Each section of .upp file begins with a keyword and ends with semicolon. The recognized section keywords are:
 - [ ] custom
 - [x] file
-- [ ] flags
+- [x] flags
 - [x] include
 - [x] library
 - [x] static_library

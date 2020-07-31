@@ -1,4 +1,5 @@
-2020-07-29 16:25:19 +0200 -         : OS system detection correction and improvement
+2020-07-31 09:33:24 +0200 -         : Options and flags correction and improvement
+2020-07-29 16:25:19 +0200 - 52d4eb4 : Correction and improvement of OS system detection
 2020-07-29 08:22:04 +0200 - 92e3bd1 : Cosmetics
 2020-07-29 07:51:35 +0200 - 5670ca1 : OpenBSD, NetBSD and SunOS platform detection improvement
 2020-07-28 23:18:57 +0200 - 1a2fd15 : Fix of a archive generation

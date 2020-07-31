@@ -196,25 +196,19 @@ string_get_before_parenthesis()
 
 if_options_replace()
 {
-    local options="${1}"
+    local options="$(string_trim_spaces_both "${1}")"
     local output=""
 
     if [ -n "${options}" ]; then
         case "${options}" in
-            "GNU")
-                output="CMAKE_C_COMPILER_ID MATCHES GNU"
-                ;;
-            "XGNU")
-                output="CMAKE_COMPILER_IS_GNUCXX"
-                ;;
-            "GCC")
-                output="CMAKE_COMPILER_IS_GNUCC"
+            "OR") # operand
+                output="OR"
                 ;;
             "SHARED")
                 output="BUILD_SHARED_LIBS"
                 ;;
-            "MSC")
-                output="MSVC"
+            "WIN32")
+                output="WIN32"
                 ;;
             "OSX"|"OSX11")
                 output="\${CMAKE_SYSTEM_NAME} MATCHES Darwin"
@@ -252,31 +246,10 @@ if_options_replace()
             "STACKTRACE")
                 output="DEFINED flagSTACKTRACE"
                 ;;
-            "MSC8ARM")
-                output="DEFINED flagMSC8ARM"
-                ;;
-            "GUI")
-                output="DEFINED flagGUI"
-                ;;
-            "XLFD")
-                output="DEFINED flagXLFD"
-                ;;
-            "NOGTK")
-                output="BUILD_WITHOUT_GTK"
-                ;;
-            "RAINBOW")
-                output="BUILD_WITH_RAINBOW"
-                ;;
-            "RELEASE")
-                output="DEFINED flagRELEASE"
-                ;;
-            "DEBUG")
-                output="DEFINED flagDEBUG"
-                ;;
         esac
 
-        if [ -z "${output}" ]; then
-            output="${options}"
+        if [ -n "${options}" ] && [ -z "${output}" ]; then
+            output="DEFINED flag${options}"
         fi
 
         echo "${output}"
@@ -308,7 +281,7 @@ if_options_parse()
 
                 if [ "${list}" = '|' ]; then
                     operand=" "
-                    list=" OR "
+                    list="OR"
                     next_operand=" "
                 else
                     next_operand=" AND "
@@ -346,14 +319,38 @@ if_options_parse_all()
     local output=""
     local result=""
 
-    # Split options by ')'
-    OLD_IFS=${IFS}
-    IFS=')'; read -d '' -ra ALL_OPTIONS <<< "${line}"
-    IFS=${OLD_IFS}
+    # Split options
+    local begin=0
+    local brace=0
+    for i in $( seq 0 $(( ${#line} )) ); do
+        if [ "${line:${i}:1}" == "(" ]; then
+            local length=$((i - begin))
+            if [ ${length} -gt 1 ]; then
+              ALL_OPTIONS+=("${line:${begin}:${length}}")
+            fi
+            begin=$((i + 1))
+            (( brace++ ))
+        fi
+        if [ ${brace} -gt 0 ] && [ "${line:${i}:1}" == ")" ]; then
+            local length=$((i - begin))
+            if [ ${length} -gt 1 ]; then
+              ALL_OPTIONS+=("${line:${begin}:${length}}")
+            fi
+            begin=$((i + 1))
+            (( brace-- ))
+        fi
+    done
+    if [ $begin -lt ${#line} ]; then
+        ALL_OPTIONS+=("${line:${begin}}")
+    fi
 
+    if [ ${#ALL_OPTIONS[@]} -eq 0 ]; then
+      ALL_OPTIONS+=("$(string_trim_spaces_both "${line}")")
+    fi
+
+    # Process options
     if [ -n "${ALL_OPTIONS}" ]; then
         for list in "${ALL_OPTIONS[@]}"; do
-            list=${list//\(}                            # Remove parenthesis
             result="("$(if_options_parse "${list}")")"  # Parse options
             result="${result//\(OR / OR \(}"            # Move 'OR'
             result="${result//\(\)}"                    # Delete empty parenthesis
@@ -434,15 +431,16 @@ list_parse()
         $(if_options_builder "${line}")
     else
         if [ -z "${list_append}" ]; then
-            options=$(string_get_in_parenthesis "${line}")
+            options="$(string_get_in_parenthesis "${line}")"
+#            echo "\"options: $options\""
             options=$(if_options_parse_all "${options}")            # Parse options
-#            echo "\"option: $options\""
+#            echo "\"options: $options\""
 
             parameters="$(string_get_after_parenthesis "${line}")"
             parameters="$(string_remove_comma "${parameters}")"
-#            echo "\"param : $parameters\""
+#            echo "\"param  : $parameters\""
         else
-#            echo "\"option:\""
+#            echo "\"options:\""
             parameters="$(string_remove_comma "${line}")"
 #            echo "\"param : $parameters\""
         fi
@@ -1418,77 +1416,62 @@ if ( WIN32 )
   remove_definitions( -DflagDRAGONFLY )
   remove_definitions( -DflagANDROID )
 
-  if ( NOT "\${FlagDefs}" MATCHES "flagWIN32" )
+  if ( NOT "\${FlagDefs}" MATCHES "flagWIN32(;|$)" )
     add_definitions ( -DflagWIN32 )
   endif()
 
 else()
   remove_definitions( -DflagWIN32 )
 
-  if ( NOT "\${FlagDefs}" MATCHES "POSIX" )
+  if ( NOT "\${FlagDefs}" MATCHES "POSIX(;|$)" )
     add_definitions ( -DflagPOSIX )
   endif()
 
-  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND NOT "\${FlagDefs}" MATCHES "flagLINUX" )
-    add_definitions( -DflagLINUX )
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND NOT "\${FlagDefs}" MATCHES "flagLINUX(;|$)" )
+    add_definitions ( -DflagLINUX )
   endif()
 
-  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "BSD" AND NOT "\${FlagDefs}" MATCHES "flagBSD" )
-    add_definitions( -DflagBSD )
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "BSD" AND NOT "\${FlagDefs}" MATCHES "flagBSD(;|$)" )
+    add_definitions ( -DflagBSD )
   endif()
 
-  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" AND NOT "\${FlagDefs}" MATCHES "flagFREEBSD" )
-    add_definitions( -DflagFREEBSD )
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" AND NOT "\${FlagDefs}" MATCHES "flagFREEBSD(;|$)" )
+    add_definitions ( -DflagFREEBSD )
   endif()
 
-  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" AND NOT "\${FlagDefs}" MATCHES "flagNETBSD" )
-    add_definitions( -DflagNETBSD )
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" AND NOT "\${FlagDefs}" MATCHES "flagNETBSD(;|$)" )
+    add_definitions ( -DflagNETBSD )
   endif()
 
-  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD" AND NOT "\${FlagDefs}" MATCHES "flagOPENBSD" )
-    add_definitions( -DflagOPENBSD )
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD" AND NOT "\${FlagDefs}" MATCHES "flagOPENBSD(;|$)" )
+    add_definitions ( -DflagOPENBSD )
   endif()
 
-  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Solaris" AND NOT "\${FlagDefs}" MATCHES "flagSOLARIS" )
-    add_definitions( -DflagSOLARIS )
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Solaris" AND NOT "\${FlagDefs}" MATCHES "flagSOLARIS(;|$)" )
+    add_definitions ( -DflagSOLARIS )
   endif()
 
-  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "SunOS" AND NOT "\${FlagDefs}" MATCHES "flagSUNOS" )
-    add_definitions( -DflagSUNOS )
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "SunOS" AND NOT "\${FlagDefs}" MATCHES "flagSUNOS(;|$)" )
+    add_definitions ( -DflagSUNOS )
   endif()
 
-  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" AND NOT "\${FlagDefs}" MATCHES "flagOSX" )
-    add_definitions( -DflagOSX )
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" AND NOT "\${FlagDefs}" MATCHES "flagOSX(;|$)" )
+    add_definitions ( -DflagOSX )
   endif()
 
-  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly" AND NOT "\${FlagDefs}" MATCHES "flagDRAGONFLY" )
-    add_definitions( -DflagDRAGONFLY )
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly" AND NOT "\${FlagDefs}" MATCHES "flagDRAGONFLY(;|$)" )
+    add_definitions ( -DflagDRAGONFLY )
   endif()
 
-  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Android" AND NOT "\${FlagDefs}" MATCHES "flagANDROID" )
-    add_definitions( -DflagANDROID )
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Android" AND NOT "\${FlagDefs}" MATCHES "flagANDROID(;|$)" )
+    add_definitions ( -DflagANDROID )
   endif()
 
 endif()
 get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 
-# Set GCC builder flag
-if ( CMAKE_COMPILER_IS_GNUCC )
-  if ( "\${FlagDefs}" MATCHES "flagGNUC14(;|$)" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 )
-    message ( FATAL_ERROR "GNU GCC version 4.9+ is required to use -std=c++14 parameter!" )
-  endif()
-
-  remove_definitions ( -DflagMSC )
-
-  if ( NOT "\${FlagDefs}" MATCHES "flagGCC(;|$)" )
-    add_definitions( -DflagGCC )
-  endif()
-
-  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
-endif()
-
 # Check supported compilation architecture environment
-if ( "\${FlagDefs}" MATCHES "flagGCC32" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )
+if ( "\${FlagDefs}" MATCHES "flagGCC32(;|$)" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )
   set ( STATUS_COMPILATION "32" )
   set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -m32 -msse2 \${PROJECT_EXTRA_COMPILE_FLAGS}" )
 else()
@@ -1498,9 +1481,43 @@ else()
 endif()
 message ( STATUS "Build compilation: \${STATUS_COMPILATION} bits" )
 
+# Set GCC builder flag
+if ( \${CMAKE_CXX_COMPILER_ID} MATCHES "GNU" )
+  set ( CMAKE_COMPILER_IS_GNUCC TRUE )
+
+  if ( "\${FlagDefs}" MATCHES "flagGNUC14(;|$)" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 )
+    message ( FATAL_ERROR "GNU GCC version 4.9+ is required to use -std=c++14 parameter!" )
+  endif()
+
+  remove_definitions ( -DflagMSC )
+  remove_definitions ( -DflagCLANG )
+
+  if ( NOT "\${FlagDefs}" MATCHES "flagGCC(;|$)" )
+    add_definitions ( -DflagGCC )
+  endif()
+
+  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
+endif()
+
+# Set CLANG builder flag
+if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
+  set ( CMAKE_COMPILER_IS_CLANG TRUE )
+  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -Wno-logical-op-parentheses" )
+
+  remove_definitions ( -DflagMSC )
+  remove_definitions ( -DflagGCC )
+
+  if ( NOT "\${FlagDefs}" MATCHES "flagCLANG(;|$)" )
+    add_definitions ( -DflagCLANG )
+  endif()
+
+  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
+endif()
+
 # Set MSVC builder flags
-if ( MSVC )
-  remove_definitions( -DflagGCC )
+if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC" )
+  remove_definitions ( -DflagGCC )
+  remove_definitions ( -DflagCLANG )
 
   if ( NOT "\${FlagDefs}" MATCHES "flagUSEMALLOC(;|$)" )
     add_definitions ( -DflagUSEMALLOC )
@@ -1542,7 +1559,7 @@ if ( MSVC )
       add_definitions ( -DflagMSC16\${MSVC_ARCH} )
   endif()
 
-  if ( "\${FlagDefs}" MATCHES "flagMP" AND NOT \${MSVC_VERSION} LESS 1400 )
+  if ( "\${FlagDefs}" MATCHES "flagMP(;|$)" AND NOT \${MSVC_VERSION} LESS 1400 )
     set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -MP" )
   endif()
 
@@ -1550,15 +1567,9 @@ if ( MSVC )
 endif()
 
 # Set Intel builder flag
-if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel" AND NOT "\${FlagDefs}" MATCHES "flagINTEL" )
-  add_definitions( -DflagINTEL )
+if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel" AND NOT "\${FlagDefs}" MATCHES "flagINTEL(;|$)" )
+  add_definitions ( -DflagINTEL )
   get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
-endif()
-
-# Set CLANG compiler flags
-if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
-  set ( CMAKE_COMPILER_IS_CLANG TRUE )
-  set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -Wno-logical-op-parentheses" )
 endif()
 
 # Set link directories on BSD systems
@@ -1567,16 +1578,15 @@ if ( \${CMAKE_SYSTEM_NAME} MATCHES BSD )
 endif()
 
 # Set debug/release compiler options
-if ( "\${FlagDefs}" MATCHES "flagDEBUG" )
+if ( "\${FlagDefs}" MATCHES "flagDEBUG(;|$)" )
   set ( CMAKE_VERBOSE_MAKEFILE 1 )
   set ( CMAKE_BUILD_TYPE DEBUG )
   add_definitions ( -D_DEBUG )
 
   set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -O0" )
 
-  if ( NOT "\${FlagDefs}" MATCHES "(flagDEBUG)(;|$)" )
+  if ( NOT "\${FlagDefs}" MATCHES "flagDEBUG(;|$)" )
       add_definitions ( -DflagDEBUG )
-      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
   endif()
 
   if ( MSVC )
@@ -1587,6 +1597,7 @@ if ( "\${FlagDefs}" MATCHES "flagDEBUG" )
       endif()
   endif()
 
+  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 else()
   set ( CMAKE_VERBOSE_MAKEFILE 0 )
   set ( CMAKE_BUILD_TYPE RELEASE )
@@ -1594,6 +1605,10 @@ else()
 
   set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -O2" )
   set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -GS-" )
+
+  if ( NOT "\${FlagDefs}" MATCHES "flagRELEASE(;|$)" )
+      add_definitions ( -DflagRELEASE )
+  endif()
 
   if ( MSVC )
       if ( "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14|15|16|17|19)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14|15|16|17|19)X64" )
@@ -1603,6 +1618,7 @@ else()
       endif()
   endif()
 
+  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 endif()
 message ( STATUS "Build type: " \${CMAKE_BUILD_TYPE} )
 
@@ -1618,7 +1634,7 @@ if ( CMAKE_VERBOSE_OVERWRITE EQUAL 0 OR CMAKE_VERBOSE_OVERWRITE EQUAL 1 )
   set ( CMAKE_VERBOSE_MAKEFILE \${CMAKE_VERBOSE_OVERWRITE} )
 endif()
 
-if ( "\${FlagDefs}" MATCHES "flagDEBUG_MINIMAL" )
+if ( "\${FlagDefs}" MATCHES "flagDEBUG_MINIMAL(;|$)" )
   if ( NOT MINGW )
       set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -ggdb" )
   endif()
@@ -1626,7 +1642,7 @@ if ( "\${FlagDefs}" MATCHES "flagDEBUG_MINIMAL" )
   set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -Zd" )
 endif()
 
-if ( "\${FlagDefs}" MATCHES "flagDEBUG_FULL" )
+if ( "\${FlagDefs}" MATCHES "flagDEBUG_FULL(;|$)" )
   if ( NOT MINGW )
       set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -ggdb" )
   endif()
@@ -1635,16 +1651,16 @@ if ( "\${FlagDefs}" MATCHES "flagDEBUG_FULL" )
 endif()
 
 # Set static/shared compiler options
-if ( "\${FlagDefs}" MATCHES "(flagSO)(;|$)" )
+if ( "\${FlagDefs}" MATCHES "flagSO(;|$)" )
   set ( BUILD_SHARED_LIBS ON )
   set ( LIB_TYPE SHARED )
-  if ( NOT "\${FlagDefs}" MATCHES "(flagSHARED)(;|$)" )
+  if ( NOT "\${FlagDefs}" MATCHES "flagSHARED(;|$)" )
       add_definitions ( -DflagSHARED )
       get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
   endif()
 endif()
 
-if ( "\${FlagDefs}" MATCHES "flagSHARED" )
+if ( "\${FlagDefs}" MATCHES "flagSHARED(;|$)" )
   set ( STATUS_SHARED "TRUE" )
   set ( EXTRA_GXX_FLAGS "\${EXTRA_GXX_FLAGS} -fuse-cxa-atexit" )
 else()
@@ -1667,7 +1683,7 @@ endif()
 message ( STATUS "Build with flagSHARED: \${STATUS_SHARED}" )
 
 # Precompiled headers support
-if ( "\${FlagDefs}" MATCHES "flagPCH" )
+if ( "\${FlagDefs}" MATCHES "flagPCH(;|$)" )
   if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
     if ( \${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.4 )
         message ( WARNING
@@ -1688,14 +1704,14 @@ if ( "\${FlagDefs}" MATCHES "flagPCH" )
   get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 endif()
 
-if ( "\${FlagDefs}" MATCHES "flagPCH" )
+if ( "\${FlagDefs}" MATCHES "flagPCH(;|$)" )
   message ( STATUS "Build with flagPCH: TRUE" )
 else()
   message ( STATUS "Build with flagPCH: FALSE" )
 endif()
 
 # Main configuration flags (MT, GUI, DLL)
-if ( "\${FlagDefs}" MATCHES "flagMT" )
+if ( "\${FlagDefs}" MATCHES "flagMT(;|$)" )
   find_package ( Threads REQUIRED )
   if ( THREADS_FOUND )
       include_directories ( \${THREADS_INCLUDE_DIRS} )
@@ -1704,8 +1720,10 @@ if ( "\${FlagDefs}" MATCHES "flagMT" )
 endif()
 
 # Set compiler options
+get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
-  if ( "\${FlagDefs}" MATCHES "flagGNUC14" )
+
+  if ( "\${FlagDefs}" MATCHES "flagGNUC14(;|$)" )
     set ( EXTRA_GXX_FLAGS "\${EXTRA_GXX_FLAGS} -std=c++14" )
   endif()
 
@@ -1714,34 +1732,32 @@ if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
   endif()
 
   if ( MINGW )
-      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
-
       # Set the minimum supported (API) version to Windows 7
       # add_definitions(-DWINVER=0x0601)
       # add_definitions(-D_WIN32_WINNT=0x0601)
+      # get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 
       set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -mwindows" )
 
-      if ( "\${FlagDefs}" MATCHES "flagDLL" )
+      if ( "\${FlagDefs}" MATCHES "flagDLL(;|$)" )
           set ( BUILD_SHARED_LIBS ON )
           set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -shared" )
           string ( REGEX REPLACE "-static " "" CMAKE_EXE_LINKER_FLAGS \${CMAKE_EXE_LINKER_FLAGS} )
       endif()
 
-      if ("\${FlagDefs}" MATCHES "flagGUI" )
+      if ("\${FlagDefs}" MATCHES "flagGUI(;|$)" )
           list ( APPEND main_${LINK_LIST} mingw32 )
       else()
           set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -mconsole" )
       endif()
 
-      if ( "\${FlagDefs}" MATCHES "flagMT" )
+      if ( "\${FlagDefs}" MATCHES "flagMT(;|$)" )
           set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -mthreads" )
       endif()
 
       # The optimalization might be broken on MinGW - remove optimalization flag (cross compile).
       string ( REGEX REPLACE "-O2" "" EXTRA_GCC_FLAGS \${EXTRA_GCC_FLAGS} )
 
-      get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
   endif()
 
   set ( CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE} "\${CMAKE_CXX_FLAGS_\${BUILD_TYPE}} \${EXTRA_GXX_FLAGS} \${EXTRA_GCC_FLAGS}" )
@@ -1753,18 +1769,16 @@ if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
   set ( CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> rs <TARGET> <LINK_FLAGS> <OBJECTS>" )
 
 elseif ( MSVC )
-  get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
-
   set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -nologo" )
 
-  if ( "\${FlagDefs}" MATCHES "flagEVC" )
-      if ( NOT "\${FlagDefs}" MATCHES "flagSH3" AND  NOT "\${FlagDefs}" MATCHES "flagSH4" )
+  if ( "\${FlagDefs}" MATCHES "flagEVC(;|$)" )
+      if ( NOT "\${FlagDefs}" MATCHES "flagSH3(;|$)" AND NOT "\${FlagDefs}" MATCHES "flagSH4(;|$)" )
           # disable stack checking
           set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -Gs8192" )
       endif()
       # read-only string pooling, turn off exception handling
       set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -GF -GX-" )
-  elseif ( "\${FlagDefs}" MATCHES "flagCLR" )
+  elseif ( "\${FlagDefs}" MATCHES "flagCLR(;|$)" )
       set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -EHac" )
   elseif ( "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14|15|16|17|19)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9)ARM" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14|15|16|17|19)X64" )
       set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -EHsc" )
@@ -1775,10 +1789,10 @@ elseif ( MSVC )
   if ( \${CMAKE_BUILD_TYPE} STREQUAL DEBUG )
       set ( EXTRA_MSVC_FLAGS_Mx "d" )
   endif()
-  if ( "\${FlagDefs}" MATCHES "flagSHARED" OR "\${FlagDefs}" MATCHES "flagCLR" )
+  if ( "\${FlagDefs}" MATCHES "flagSHARED(;|$)" OR "\${FlagDefs}" MATCHES "flagCLR(;|$)" )
       set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -MD\${EXTRA_MSVC_FLAGS_Mx}" )
   else()
-      if ( "\${FlagDefs}" MATCHES "flagMT" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14|15|16|17|19)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9)ARM" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14|15|16|17|19)X64" )
+      if ( "\${FlagDefs}" MATCHES "flagMT(;|$)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14|15|16|17|19)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9)ARM" OR "\${FlagDefs}" MATCHES "flagMSC(8|9|10|11|12|14|15|16|17|19)X64" )
           set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -MT\${EXTRA_MSVC_FLAGS_Mx}" )
       else()
           set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} -ML\${EXTRA_MSVC_FLAGS_Mx}" )
@@ -1793,14 +1807,14 @@ elseif ( MSVC )
   if ( "\${FlagDefs}" MATCHES "flagMSC(8|9)ARM" )
       set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -subsystem:windowsce,4.20 /ARMPADCODE -NODEFAULTLIB:\"oldnames.lib\"" )
   else()
-      if ( "\${FlagDefs}" MATCHES "flagGUI" OR "\${FlagDefs}" MATCHES "flagMSC(8|9)ARM" )
+      if ( "\${FlagDefs}" MATCHES "flagGUI(;|$)" OR "\${FlagDefs}" MATCHES "flagMSC(8|9)ARM" )
           set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -subsystem:windows\${MSVC_LINKER_SUBSYSTEM}" )
       else()
           set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -subsystem:console\${MSVC_LINKER_SUBSYSTEM}" )
       endif()
   endif()
 
-  if ( "\${FlagDefs}" MATCHES "flagDLL" )
+  if ( "\${FlagDefs}" MATCHES "flagDLL(;|$)" )
       set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -dll" )
   endif()
 
@@ -2131,7 +2145,7 @@ if ( DEFINED MAIN_TARGET_LINK_FLAGS )
 endif()
 
 # Precompiled headers processing
-if ( "\${FlagDefs}" MATCHES "flagPCH" )
+if ( "\${FlagDefs}" MATCHES "flagPCH(;|$)" )
   if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
     # Collect included directories of the external packages from all targets
     foreach ( target \${${main_target_name}_${DEPEND_LIST}} )
