@@ -210,42 +210,6 @@ if_options_replace()
             "WIN32")
                 output="WIN32"
                 ;;
-            "OSX"|"OSX11")
-                output="\${CMAKE_SYSTEM_NAME} MATCHES Darwin"
-                ;;
-            "LINUX")
-                output="\${CMAKE_SYSTEM_NAME} MATCHES Linux"
-                ;;
-            "BSD")
-                output="\${CMAKE_SYSTEM_NAME} MATCHES BSD"
-                ;;
-            "FREEBSD")
-                output="\${CMAKE_SYSTEM_NAME} MATCHES FreeBSD"
-                ;;
-            "NETBSD")
-                output="\${CMAKE_SYSTEM_NAME} MATCHES NetBSD"
-                ;;
-            "OPENBSD")
-                output="\${CMAKE_SYSTEM_NAME} MATCHES OpenBSD"
-                ;;
-            "SOLARIS")
-                output="\${CMAKE_SYSTEM_NAME} MATCHES Solaris"
-                ;;
-            "SUNOS")
-                output="\${CMAKE_SYSTEM_NAME} MATCHES SunOS"
-                ;;
-            "DRAGONFLY")
-                output="\${CMAKE_SYSTEM_NAME} MATCHES DragonFly"
-                ;;
-            "ANDROID")
-                output="\${CMAKE_SYSTEM_NAME} MATCHES Android"
-                ;;
-            "POSIX")
-                output="DEFINED flagPOSIX"
-                ;;
-            "STACKTRACE")
-                output="DEFINED flagSTACKTRACE"
-                ;;
         esac
 
         if [ -n "${options}" ] && [ -z "${output}" ]; then
@@ -1410,7 +1374,6 @@ if ( WIN32 )
   remove_definitions( -DflagNETBSD )
   remove_definitions( -DflagOPENBSD )
   remove_definitions( -DflagSOLARIS )
-  remove_definitions( -DflagSUNOS )
   remove_definitions( -DflagOSX )
   remove_definitions( -DflagOSX11 )
   remove_definitions( -DflagDRAGONFLY )
@@ -1451,8 +1414,8 @@ else()
     add_definitions ( -DflagSOLARIS )
   endif()
 
-  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "SunOS" AND NOT "\${FlagDefs}" MATCHES "flagSUNOS(;|$)" )
-    add_definitions ( -DflagSUNOS )
+  if ( \${CMAKE_SYSTEM_NAME} STREQUAL "SunOS" AND NOT "\${FlagDefs}" MATCHES "flagSOLARS(;|$)" )
+    add_definitions ( -DflagSOLARIS )
   endif()
 
   if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" AND NOT "\${FlagDefs}" MATCHES "flagOSX(;|$)" )

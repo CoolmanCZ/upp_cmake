@@ -142,7 +142,6 @@ FREEBSD   | set | FreeBSD
 NETBSD    | set | NetBSD
 OPENBSD   | set | OpenBSD
 SOLARIS   | set | Solaris
-SUNOS     | set | SunOS
 OSX       | set | Darwin
 DRAGONFLY | set | DragonFly
 ANDROID   | set | Android
