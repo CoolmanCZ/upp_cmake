@@ -17,6 +17,12 @@ This script was created based on discussion [CMake support](http://www.ultimatep
 - Batch processing support
 - import.ext file support
 
+## CMake option
+
+### ENABLE_CLANG_TIDY
+When this option is set ON clang-tidy is run together with the compiler. The clang-tidy checks are defined in the 'Checks' option in .clang-tidy file.
+Example: ```cmake -DENABLE_CLANG_TIDY=1 ..```
+
 ## UPP package sections
 UPP package format is described at [Ultimate++ documentation page](https://www.ultimatepp.org/app$ide$upp$en-us.html). Each section of .upp file begins with a keyword and ends with semicolon. The recognized section keywords are:
 - [ ] custom
