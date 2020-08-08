@@ -1,7 +1,10 @@
 # Ultimate++ CMakeLists generator
 
-GenerateCMakeFiles-lib.sh is the bash script for generating CMakeLists.txt files of the [Ultimate++](http://www.ultimatepp.org/) projects.
-This script was created based on discussion [CMake support](http://www.ultimatepp.org/forums/index.php?t=msg&th=6013&goto=32310&#msg_32310) on the [Ultimate++ forum](http://www.ultimatepp.org/forums).
+```GenerateCMakeFiles-lib.sh``` is the bash script library for generating CMakeLists.txt files (configuration files used by CMake) of the [Ultimate++](http://www.ultimatepp.org/) projects. How to use this library is shown in the script example section.
+
+[CMake](https://cmake.org/) is an open-source, cross-platform family of tools designed to build, test and package software. CMake is used to control the software compilation process using simple platform and compiler independent configuration files, and generate native makefiles and workspaces that can be used in the compiler environment of your choice.
+
+This script library was created based on discussion [CMake support](http://www.ultimatepp.org/forums/index.php?t=msg&th=6013&goto=32310&#msg_32310) on the [Ultimate++ forum](http://www.ultimatepp.org/forums).
 
 # Supported features
 - New Core with C++14 build (require GCC 4.9+)
@@ -16,12 +19,6 @@ This script was created based on discussion [CMake support](http://www.ultimatep
 - Precompiled headers (PCH) (for GCC 4.9+, Clang 3.5+)
 - Batch processing support
 - import.ext file support
-
-## CMake option
-
-### ENABLE_CLANG_TIDY
-When this option is set ON clang-tidy is run together with the compiler. The clang-tidy checks are defined in the 'Checks' option in .clang-tidy file.
-Example: ```cmake -DENABLE_CLANG_TIDY=1 ..```
 
 ## UPP package sections
 UPP package format is described at [Ultimate++ documentation page](https://www.ultimatepp.org/app$ide$upp$en-us.html). Each section of .upp file begins with a keyword and ends with semicolon. The recognized section keywords are:
@@ -55,33 +52,16 @@ Some section options are not taken into account when generate CMakeLists:
 - static_library - library is considered as a normal library
 - target - only main target is renamed
 
-# Parameters
-Using of the script is demonstrated in the [example.sh](example.sh), where you should change the variables described below in the text.
 
-Script example:
-``` bash
-#!/bin/bash
+# Script library parameters
+Using of the script library is demonstrated in the [example.sh](example.sh), where you should change the variables described below in the text.
 
-source ./GenerateCMakeFiles-lib.sh
-
-GENERATE_VERBOSE="1"        # set to "1" - enable additional output during script processing on the screen
-GENERATE_DEBUG="1"          # set to "1" - enable debug output during script processing on the screen
-GENERATE_PACKAGE="1"        # set to "1" - create a tarball package of the project
-
-UPP_SRC_BASE="upp-x11-src"
-UPP_SRC_DIR="${UPP_SRC_BASE}/uppsrc"
-PROJECT_NAME="${UPP_SRC_DIR}/ide/ide.upp"
-PROJECT_FLAGS="-DflagGUI -DflagMT -DflagGCC -DflagLINUX -DflagPOSIX -DflagSHARED"
-
-generate_main_cmake_file "${PROJECT_NAME}" "${PROJECT_FLAGS}"
-```
-
-### Main configuration parameters
+## Main configuration parameters
 * UPP_SRC_DIR - directory path of the Ultimate++ source tree
 * PROJECT_NAME - full path to the ultimate++ project file
 * PROJECT_FLAGS - project build and configuration flags
 
-### Optional configuration parameters
+## Optional configuration parameters
 * PROJECT_EXTRA_COMPILE_FLAGS - extra compile flags
 * PROJECT_EXTRA_LINK_FLAGS - extra link flags
 * PROJECT_EXTRA_INCLUDE_DIR - extra directory path which will be added as a system include path
@@ -102,20 +82,65 @@ Parameters of the "generate_main_cmake_file" function are
 ```
 generate_main_cmake_file <${PROJECT_NAME}> [${PROJECT_FLAGS}]
 ```
+
+### Example:
+``` bash
+#!/bin/bash
+
+source ./GenerateCMakeFiles-lib.sh
+
+GENERATE_VERBOSE="1"        # set to "1" - enable additional output during script processing on the screen
+GENERATE_DEBUG="1"          # set to "1" - enable debug output during script processing on the screen
+GENERATE_PACKAGE="1"        # set to "1" - create a tarball package of the project
+
+UPP_SRC_BASE="upp-x11-src"
+UPP_SRC_DIR="${UPP_SRC_BASE}/uppsrc"
+PROJECT_NAME="${UPP_SRC_DIR}/ide/ide.upp"
+PROJECT_FLAGS="-DflagGUI -DflagMT -DflagGCC -DflagLINUX -DflagPOSIX -DflagSHARED"
+
+generate_main_cmake_file "${PROJECT_NAME}" "${PROJECT_FLAGS}"
+```
+
 ### TODO
 - Support of the precompiled headers (PCH) for MSVC
 
 ### DONE
 - Resolve problem to build DLL,SO as target with flagPCH (The problem disappeared after refactoring of the PCH code.)
 
-# Build and configuration Flags
-Build and configuration flags, that are taken into account by the GenerateCMakeFiles-lib.sh script. They can be specified in the variable PROJECT_FLAGS (use **flag** prefix e.g. *-DflagMT*).
 
-- yes - the flag changes / specifies the behavior of the script
-- set - the flag is set by the script, if it is not defined
-- 'empty' - the flag is not used / set by the script
+# CMake additional options
+These options enhance the CMakeLists.txt configuration file with additional functionality and they are not a part of the Ultimate++ build system.
 
-Script sets and using new flags (can be disabled by configuration parameters)
+### REMOVE_UNUSED_CODE (default: ON)
+When this option is set ON binaries are built with removed unused code and functions.
+
+Example: ```cmake -DREMOVE_UNUSED_CODE=OFF ..```
+*Note: Default can be changed by the script library configuration parameter GENERATE_NOT_REMOVE_UNUSED_CODE.*
+
+### ENABLE_INCLUDE_WHAT_YOU_USE (default: OFF)
+Enable static code analysis with [include-what-you-use](https://include-what-you-use.org/).
+
+Example: ```cmake -DENABLE_INCLUDE_WHAT_YOU_USE=ON ..```
+
+### ENABLE_CPPCHECK (default: OFF)
+Enable static code analysis with [Cppcheck](http://cppcheck.sourceforge.net/).
+
+Example: ```cmake -DENABLE_CPPCHECK=ON ..```
+
+### ENABLE_CLANG_TIDY (default: OFF)
+Enable static code analysis with [clang-tidy](https://clang.llvm.org/extra/clang-tidy/) is run together with the compiler. The clang-tidy checks should be defined in the 'Checks' option in the .clang-tidy file.
+
+Example: ```cmake -DENABLE_CLANG_TIDY=ON ..```
+
+
+# Ultimate++ build and configuration flags
+Build and configuration flags, that are taken into account by CMake. They can be specified in the variable PROJECT_FLAGS in the ```GenerateCMakeFiles-lib.sh``` script library (use **flag** prefix e.g. *-DflagMT*).
+
+- yes - the flag changes / specifies the behavior of the CMake
+- set - the flag is set automatically by the CMake
+- 'empty' - the flag is not used by the CMake and is only promoted further
+
+CMake sets and using new flags (can be disabled by the script library configuration parameters)
 * flagGNUC14 - set compiler flag -std=c++14
 * flagMP - enable multiple process build (MSVC)
 * flagPCH - use precompiled headers during build (only GCC and Clang are supported now)
@@ -173,7 +198,7 @@ EVC_SH3    |     | Microsoft WinCE C++ SH3 complier.
 EVC_SH4    |     | Microsoft WinCE C++ SH4 complier.
 INTEL      | set | Intel C++.
 
-### Other flags (to be supplied by user)
+### Other flags (must be set by user)
 Flag | Supported | Description
 ---  | ---       | ---
 X11          |     | On POSIX systems turns on X11 backend.

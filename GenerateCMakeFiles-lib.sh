@@ -1305,9 +1305,9 @@ generate_main_cmake_file()
         main_definitions+=" -DflagPCH"
     fi
 
-    REMOVE_UNUSED_CODE="0"
+    REMOVE_UNUSED_CODE="OFF"
     if [ -z "${GENERATE_NOT_REMOVE_UNUSED_CODE}" ] || [ "${GENERATE_NOT_REMOVE_UNUSED_CODE}" != "1" ]; then
-        REMOVE_UNUSED_CODE="1"
+        REMOVE_UNUSED_CODE="ON"
     fi
 
     # Begin of the cat (CMakeFiles.txt)
@@ -1319,9 +1319,6 @@ generate_main_cmake_file()
 # 0 - do not generate cmake verbose makefile output
 # 1 - always generate cmake verbose makefile output
 set ( CMAKE_VERBOSE_OVERWRITE ${CMAKE_VERBOSE_OVERWRITE} )
-
-# Parameter to distinguish whether to build binary with removed unused code and functions
-set ( REMOVE_UNUSED_CODE ${REMOVE_UNUSED_CODE} )
 
 # Project name
 project ( ${main_target_name} )
@@ -1355,6 +1352,64 @@ set ( EXECUTABLE_OUTPUT_PATH \${PROJECT_BINARY_DIR}/bin )
 
 # Project definitions
 add_definitions ( ${main_definitions} )
+
+# Option to distinguish whether to build binary with removed unused code and functions
+option ( REMOVE_UNUSED_CODE "Build binary with removed unused code and functions." ${REMOVE_UNUSED_CODE} )
+
+# Option to enable static analysis with include-what-you-use
+option ( ENABLE_INCLUDE_WHAT_YOU_USE "Enable static analysis with include-what-you-use" OFF )
+if ( ENABLE_INCLUDE_WHAT_YOU_USE )
+    find_program( INCLUDE_WHAT_YOU_USE include-what-you-use )
+    if ( INCLUDE_WHAT_YOU_USE )
+        set( CMAKE_CXX_INCLUDE_WHAT_YOU_USE \${INCLUDE_WHAT_YOU_USE} )
+    else()
+        message( WARNING "include-what-you-use requested but executable not found" )
+        set( CMAKE_CXX_INCLUDE_WHAT_YOU_USE "" CACHE STRING "" FORCE )
+    endif()
+endif()
+
+# Option to enable static analysis with cppcheck
+option ( ENABLE_CPPCHECK "Enable static analysis with cppcheck" OFF )
+if ( ENABLE_CPPCHECK )
+    find_program( CPPCHECK cppcheck)
+    if ( CPPCHECK )
+        set( CMAKE_CXX_CPPCHECK
+        \${CPPCHECK}
+        --suppress=missingInclude
+        --enable=all
+        --inline-suppr
+        --inconclusive
+        -i
+        \${CMAKE_SOURCE_DIR}/imgui/lib )
+    else()
+        message( WARNING "cppcheck requested but executable not found" )
+        set( CMAKE_CXX_CPPCHECK "" CACHE STRING "" FORCE )
+    endif()
+endif()
+
+# Option to enable static analysis with clang-tidy
+option ( ENABLE_CLANG_TIDY "Run clang-tidy with the compiler." OFF )
+if ( ENABLE_CLANG_TIDY )
+    if ( CMake_SOURCE_DIR STREQUAL CMake_BINARY_DIR )
+        message ( FATAL_ERROR "ENABLE_CLANG_TIDY requires an out-of-source build!" )
+    endif()
+
+    if ( CMAKE_VERSION VERSION_LESS 3.5 )
+        message ( WARNING "ENABLE_CLANG_TIDY is ON but CMAKE_VERSION is less than 3.5!" )
+        set( CMAKE_C_CLANG_TIDY "" CACHE STRING "" FORCE )
+        set( CMAKE_CXX_CLANG_TIDY "" CACHE STRING "" FORCE )
+    else()
+        find_program ( CLANG_TIDY_COMMAND NAMES clang-tidy )
+        if ( NOT CLANG_TIDY_COMMAND )
+            message ( WARNING "ENABLE_CLANG_TIDY is ON but clang-tidy is not found!" )
+            set( CMAKE_C_CLANG_TIDY "" CACHE STRING "" FORCE )
+            set( CMAKE_CXX_CLANG_TIDY "" CACHE STRING "" FORCE )
+        else()
+            set( CMAKE_C_CLANG_TIDY "\${CLANG_TIDY_COMMAND}" )
+            set( CMAKE_CXX_CLANG_TIDY "\${CLANG_TIDY_COMMAND}" )
+        endif()
+    endif()
+endif()
 
 # Extra compilation and link flags
 set ( PROJECT_EXTRA_COMPILE_FLAGS "${PROJECT_EXTRA_COMPILE_FLAGS}" )
@@ -1412,10 +1467,12 @@ else()
 
   if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Solaris" AND NOT "\${FlagDefs}" MATCHES "flagSOLARIS(;|$)" )
     add_definitions ( -DflagSOLARIS )
+    set ( REMOVE_UNUSED_CODE ON )
   endif()
 
   if ( \${CMAKE_SYSTEM_NAME} STREQUAL "SunOS" AND NOT "\${FlagDefs}" MATCHES "flagSOLARS(;|$)" )
     add_definitions ( -DflagSOLARIS )
+    set ( REMOVE_UNUSED_CODE ON )
   endif()
 
   if ( \${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" AND NOT "\${FlagDefs}" MATCHES "flagOSX(;|$)" )
@@ -1783,30 +1840,6 @@ elseif ( MSVC )
 
   set ( CMAKE_CXX_FLAGS_\${CMAKE_BUILD_TYPE} "\${CMAKE_CXX_FLAGS_\${BUILD_TYPE}} \${EXTRA_MSVC_FLAGS}" )
   set ( CMAKE_C_FLAGS_\${CMAKE_BUILD_TYPE} "\${CMAKE_C_FLAGS_\${BUILD_TYPE}} \${EXTRA_MSVC_FLAGS}" )
-endif()
-
-# Option to enable clang-tidy
-option ( ENABLE_CLANG_TIDY "Run clang-tidy with the compiler." OFF )
-if ( ENABLE_CLANG_TIDY )
-    if ( CMake_SOURCE_DIR STREQUAL CMake_BINARY_DIR )
-        message ( FATAL_ERROR "ENABLE_CLANG_TIDY requires an out-of-source build!" )
-    endif()
-
-    if ( CMAKE_VERSION VERSION_LESS 3.5 )
-        message ( WARNING "ENABLE_CLANG_TIDY is ON but CMAKE_VERSION is less than 3.5!" )
-        set ( CMAKE_C_CLANG_TIDY "" CACHE STRING "" FORCE )
-        set ( CMAKE_CXX_CLANG_TIDY "" CACHE STRING "" FORCE )
-    else()
-        find_program ( CLANG_TIDY_COMMAND NAMES clang-tidy )
-        if ( NOT CLANG_TIDY_COMMAND )
-            message ( WARNING "ENABLE_CLANG_TIDY is ON but clang-tidy is not found!" )
-            set ( CMAKE_C_CLANG_TIDY "" CACHE STRING "" FORCE )
-            set ( CMAKE_CXX_CLANG_TIDY "" CACHE STRING "" FORCE )
-        else()
-            set( CMAKE_C_CLANG_TIDY "\${CLANG_TIDY_COMMAND}" )
-            set( CMAKE_CXX_CLANG_TIDY "\${CLANG_TIDY_COMMAND}" )
-        endif()
-    endif()
 endif()
 
 # Function to generate precompiled header
