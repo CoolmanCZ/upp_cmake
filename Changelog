@@ -1,4 +1,6 @@
-2020-08-06 19:59:06 +0200 -         : CMake option to run clang-tidy with the compiler
+2020-08-08 17:58:35 +0200 -         : README.md update
+2020-08-08 17:53:14 +0200 - 745b62c : New CMake options
+2020-08-06 19:59:06 +0200 - 461759e : CMake option to run clang-tidy with the compiler
 2020-08-04 06:41:32 +0200 - f7847d5 : Set flagSOLARIS for SunOS system
 2020-07-31 09:33:24 +0200 - fc78e29 : Options and flags correction and improvement
 2020-07-29 16:25:19 +0200 - 52d4eb4 : Correction and improvement of OS system detection

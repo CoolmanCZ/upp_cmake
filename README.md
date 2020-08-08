@@ -115,6 +115,7 @@ These options enhance the CMakeLists.txt configuration file with additional func
 When this option is set ON binaries are built with removed unused code and functions.
 
 Example: ```cmake -DREMOVE_UNUSED_CODE=OFF ..```
+
 *Note: Default can be changed by the script library configuration parameter GENERATE_NOT_REMOVE_UNUSED_CODE.*
 
 ### ENABLE_INCLUDE_WHAT_YOU_USE (default: OFF)
