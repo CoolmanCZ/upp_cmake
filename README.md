@@ -1,8 +1,10 @@
 # Ultimate++ CMakeLists generator
 
-```GenerateCMakeFiles-lib.sh``` is the bash script library for generating CMakeLists.txt files (configuration files used by CMake) of the [Ultimate++](http://www.ultimatepp.org/) projects. How to use this library is shown in the script example section.
+```GenerateCMakeFiles-lib.sh``` is the bash script library for generating CMakeLists.txt files (configuration files used by CMake) of the Ultimate++ projects. How to use this library is shown in the script example section.
 
 [CMake](https://cmake.org/) is an open-source, cross-platform family of tools designed to build, test and package software. CMake is used to control the software compilation process using simple platform and compiler independent configuration files, and generate native makefiles and workspaces that can be used in the compiler environment of your choice.
+
+[Ultimate++](http://www.ultimatepp.org/) is a C++ cross-platform rapid application development framework focused on programmers productivity. It includes a set of libraries (GUI, SQL, etc.), and an integrated development environment.
 
 This script library was created based on discussion [CMake support](http://www.ultimatepp.org/forums/index.php?t=msg&th=6013&goto=32310&#msg_32310) on the [Ultimate++ forum](http://www.ultimatepp.org/forums).
 

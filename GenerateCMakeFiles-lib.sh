@@ -1125,7 +1125,7 @@ generate_cmake_from_upp()
         echo "# Module properties" >> "${OFN}"
         echo "create_cpps_from_icpps()" >> "${OFN}"
         echo "set_source_files_properties ( \${$HEADER_LIST} PROPERTIES HEADER_FILE_ONLY ON )" >> "${OFN}"
-        echo "add_library ( ${target_name}${LIB_SUFFIX} \${LIB_TYPE} \${$SOURCE_LIST_CPP} \${$SOURCE_LIST_C})" >> "${OFN}"
+        echo "add_library ( ${target_name}${LIB_SUFFIX} \${LIB_TYPE} \${$SOURCE_LIST_CPP} \${$SOURCE_LIST_C} \${$HEADER_LIST} )" >> "${OFN}"
         echo "target_include_directories ( ${target_name}${LIB_SUFFIX} PUBLIC \${${INCLUDE_LIST}} )" >> "${OFN}"
         echo "set_property ( TARGET ${target_name}${LIB_SUFFIX} APPEND PROPERTY COMPILE_OPTIONS \"\${${COMPILE_FLAGS_LIST}}\" )" >> "${OFN}"
 
@@ -1147,6 +1147,7 @@ generate_cmake_from_upp()
         echo "if ( ${PCH_FILE}_LENGTH GREATER 1 )" >> "${OFN}"
         echo '  message ( FATAL_ERROR "Precompiled headers list can contain only one header file!" )' >> "${OFN}"
         echo 'endif()' >> "${OFN}"
+        echo >> "${OFN}"
         echo "if ( ${PCH_FILE} AND DEFINED flagPCH )" >> "${OFN}"
         echo "  get_filename_component ( PCH_NAME \${${PCH_FILE}} NAME )" >> "${OFN}"
         echo "  set ( PCH_DIR \${PROJECT_PCH_DIR}/${target_name}${LIB_SUFFIX} )" >> "${OFN}"
