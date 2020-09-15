@@ -9,7 +9,7 @@ fi
 mkdir -p $BUILD_DIR
 
 cd $BUILD_DIR
-cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=../toolchain-clang.cmake .. && ninja -j 4
+cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=../upp_cmake/utils/toolchain-clang.cmake .. && ninja -j $(nproc)
 
 DUR=$(echo "$(date +%s.%N) - ${START}" | bc)
 echo "Execution time: $(date -d@0${DUR} -u +%H:%M:%S.%N)"

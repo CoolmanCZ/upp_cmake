@@ -432,7 +432,7 @@ list_parse()
         local add_link_library=""
         if [ -n "${target_name}" ]; then
             local pkg_config_module="0"
-            if [[ "${line}" =~ ^pkg_config ]]; then
+            if [[ "${line}" =~ ^pkg_config || "${list_append}" =~ ^pkg_config ]]; then
                 pkg_config_module="1"
             fi
             local -a check_library_array=(${parameters})
@@ -929,7 +929,11 @@ generate_cmake_from_upp()
                             list_parse "library${LINE}" "${LINK_LIST}" "${target_name}"
                         fi
                     else
-                        list_parse "${LINE}" "${LINK_LIST}" "${target_name}" "append library"
+                        if [[ "${section}" =~ $RE_PKG_CONFIG ]]; then
+                            list_parse "${LINE}" "${LINK_LIST}" "${target_name}" "pkg_config"
+                        else
+                            list_parse "${LINE}" "${LINK_LIST}" "${target_name}" "append library"
+                        fi
                     fi
                 done
             fi
@@ -1764,26 +1768,37 @@ if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
       # add_definitions(-D_WIN32_WINNT=0x0601)
       # get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 
-      set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -mwindows" )
-
       if ( "\${FlagDefs}" MATCHES "flagDLL(;|$)" )
           set ( BUILD_SHARED_LIBS ON )
           set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -shared" )
           string ( REGEX REPLACE "-static " "" CMAKE_EXE_LINKER_FLAGS \${CMAKE_EXE_LINKER_FLAGS} )
       endif()
 
-      if ("\${FlagDefs}" MATCHES "flagGUI(;|$)" )
+      if ( "\${FlagDefs}" MATCHES "flagGUI(;|$)" )
           list ( APPEND main_${LINK_LIST} mingw32 )
-      else()
-          set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -mconsole" )
       endif()
 
-      if ( "\${FlagDefs}" MATCHES "flagMT(;|$)" )
-          set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -mthreads" )
+      # The workaround to avoid 'error: duplicate symbol: std::__throw_bad_alloc()'
+      if ( CMAKE_COMPILER_IS_CLANG AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 11.0 )
+          add_definitions ( -DflagUSEMALLOC )
+          get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
       endif()
 
-      # The optimalization might be broken on MinGW - remove optimalization flag (cross compile).
-      string ( REGEX REPLACE "-O2" "" EXTRA_GCC_FLAGS \${EXTRA_GCC_FLAGS} )
+      if ( CMAKE_COMPILER_IS_GNUCC )
+          # The optimalization might be broken on MinGW - remove optimalization flag (cross compile).
+          #string ( REGEX REPLACE "-O2" "" EXTRA_GCC_FLAGS \${EXTRA_GCC_FLAGS} )
+
+          if( "\${FlagDefs}" MATCHES "flagGUI(;|$)" )
+              list ( APPEND main_${LINK_LIST} mingw32 )
+              set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -mwindows" )
+          else()
+              set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -mconsole" )
+          endif()
+
+          if( "\${FlagDefs}" MATCHES "flagMT(;|$)" )
+              set ( EXTRA_GCC_FLAGS "\${EXTRA_GCC_FLAGS} -mthreads" )
+          endif()
+      endif()
 
   endif()
 
