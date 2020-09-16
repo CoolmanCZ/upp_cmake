@@ -1452,6 +1452,10 @@ if ( WIN32 )
 else()
   remove_definitions( -DflagWIN32 )
 
+  if ( NOT "\${FlagDefs}" MATCHES "flagSHARED(;|$)" )
+    add_definitions ( -DflagSHARED )
+  endif()
+
   if ( NOT "\${FlagDefs}" MATCHES "POSIX(;|$)" )
     add_definitions ( -DflagPOSIX )
   endif()
