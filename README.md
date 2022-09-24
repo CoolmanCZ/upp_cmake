@@ -66,7 +66,8 @@ Using of the script library is demonstrated in the [example.sh](example.sh), whe
 ## Optional configuration parameters
 * PROJECT_EXTRA_COMPILE_FLAGS - extra compile flags
 * PROJECT_EXTRA_LINK_FLAGS - extra link flags
-* PROJECT_EXTRA_INCLUDE_DIR - extra directory path which will be added as a system include path
+* PROJECT_EXTRA_INCLUDE_DIR - extra directory path which will be added as a include path
+* PROJECT_EXTRA_INCLUDE_SUBDIRS - set tp "1" - sub-directories in the extra directory path will be added as a include path
 
 * GENERATE_VERBOSE - set to "1" - enable additional output during script processing on the screen
 * GENERATE_DEBUG - set to "1" - enable debug output during script processing on the screen

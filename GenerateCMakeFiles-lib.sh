@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2016-2020 Radek Malcic
+# Copyright (C) 2016-2022 Radek Malcic
 #
 # All rights reserved.
 #
@@ -1216,7 +1216,7 @@ generate_cmake_file()
 
         cd "${cur_dir}"
     else
-        echo "File \"${sub_dir}/${upp_name}\" doesn't exist!"
+        echo "ERROR: file \"${sub_dir}/${upp_name}\" doesn't exist!"
     fi
 
     if [ "${GENERATE_VERBOSE}" == "1" ]; then
@@ -1315,6 +1315,14 @@ generate_main_cmake_file()
         REMOVE_UNUSED_CODE="ON"
     fi
 
+	if [ -n "${PROJECT_EXTRA_INCLUDE_DIR}" ]; then
+        PROJECT_EXTRA_INCLUDE="${PROJECT_EXTRA_INCLUDE_DIR}"
+		if [ "${PROJECT_EXTRA_INCLUDE_SUBDIRS}" == "1" ]; then
+			subdirs="$(ls -d -- ${PROJECT_EXTRA_INCLUDE_DIR}/*)"
+            PROJECT_EXTRA_INCLUDE="${PROJECT_EXTRA_INCLUDE} ${subdirs//$'\n'/$' '}"
+		fi
+	fi
+
     # Begin of the cat (CMakeFiles.txt)
     cat >> "${OFN}" << EOL
 
@@ -1330,7 +1338,7 @@ project ( ${main_target_name} )
 
 # Set the project common path
 set ( UPP_SOURCE_DIRECTORY ${UPP_SRC_DIR} )
-set ( UPP_EXTRA_INCLUDE ${PROJECT_EXTRA_INCLUDE_DIR} )
+set ( UPP_EXTRA_INCLUDE ${PROJECT_EXTRA_INCLUDE} )
 set ( PROJECT_INC_DIR \${PROJECT_BINARY_DIR}/inc )
 set ( PROJECT_PCH_DIR \${PROJECT_BINARY_DIR}/pch )
 
@@ -2037,7 +2045,10 @@ EOL
             elif [ -d "${PROJECT_EXTRA_INCLUDE_DIR}/${process_upp}" ]; then
                 PKG_DIR="${PROJECT_EXTRA_INCLUDE_DIR}"
             else
-                pkg_DIR=""
+                PKG_DIR=""
+                echo "ERROR"
+                echo "ERROR - package \"${process_upp}\" was not foud!"
+                echo "ERROR"
             fi
 
             if [ -d "${PKG_DIR}/${process_upp}" ]; then
