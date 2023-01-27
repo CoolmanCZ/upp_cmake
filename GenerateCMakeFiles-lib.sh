@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2016-2022 Radek Malcic
+# Copyright (C) 2016-2023 Radek Malcic
 #
 # All rights reserved.
 #
@@ -1267,7 +1267,11 @@ generate_package_file()
         echo "${UPP_SRC_DIR}/guiplatform.h" >> "${package_src_name_archive_list}"
 
         for pkg_name in ${sorted_UPP_ALL_USES_DONE[@]}; do
-            find "${UPP_SRC_DIR}/${pkg_name}" -name '*' -type f >> "${package_src_name_archive_list}"
+            if [ -d "${UPP_SRC_DIR}/${pkg_name}" ]; then
+                find "${UPP_SRC_DIR}/${pkg_name}" -name '*' -type f >> "${package_src_name_archive_list}"
+            elif [ -d "${PROJECT_EXTRA_INCLUDE_DIR}/${pkg_name}" ]; then
+                find "${PROJECT_EXTRA_INCLUDE_DIR}/${pkg_name}" -name '*' -type f >> "${package_src_name_archive_list}"
+            fi
         done
 
         tar -c -j -f "${package_src_name_archive}" -T "${package_src_name_archive_list}"
