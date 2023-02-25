@@ -136,6 +136,10 @@ Enable static code analysis with [clang-tidy](https://clang.llvm.org/extra/clang
 
 Example: ```cmake -DENABLE_CLANG_TIDY=ON ..```
 
+### CLANG_TIDY_OPTIONS (defualt: empty)
+Add extra clang-tidy command line options. Options must be separated by `;`.
+
+Example: ```cmake -DCLANG_TIDY_OPTIONS="--fix" ..```
 
 # Ultimate++ build and configuration flags
 Build and configuration flags, that are taken into account by CMake. They can be specified in the variable PROJECT_FLAGS in the ```GenerateCMakeFiles-lib.sh``` script library (use **flag** prefix e.g. *-DflagMT*).
