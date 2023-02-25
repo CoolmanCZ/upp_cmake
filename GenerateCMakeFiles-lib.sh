@@ -1406,7 +1406,7 @@ endif()
 
 # Option to enable static analysis with clang-tidy
 option ( ENABLE_CLANG_TIDY "Run clang-tidy with the compiler." OFF )
-set( CLANG_TIDY_OPTIONS "" CACHE STRING "Extra clang-tidy options separated by `;`" )
+set( CLANG_TIDY_OPTIONS "" CACHE STRING "Extra clang-tidy options separated by \`;\`" )
 if ( ENABLE_CLANG_TIDY )
     if ( CMake_SOURCE_DIR STREQUAL CMake_BINARY_DIR )
         message ( FATAL_ERROR "ENABLE_CLANG_TIDY requires an out-of-source build!" )
