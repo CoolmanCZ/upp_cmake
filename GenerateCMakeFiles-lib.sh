@@ -1303,7 +1303,7 @@ generate_main_cmake_file()
     generate_cmake_header
 
     if [ -z "${GENERATE_NOT_Cxx}" ] || [ "${GENERATE_NOT_Cxx}" != "1" ]; then
-        main_definitions+=" -DflagGNUC14"
+        main_definitions+=" -DflagGNUC17"
     fi
 
     if [ -z "${GENERATE_NOT_PARALLEL}" ] || [ "${GENERATE_NOT_PARALLEL}" != "1" ]; then
@@ -1542,8 +1542,8 @@ message ( STATUS "Build compilation: \${STATUS_COMPILATION} bits" )
 if ( \${CMAKE_CXX_COMPILER_ID} MATCHES "GNU" )
   set ( CMAKE_COMPILER_IS_GNUCC TRUE )
 
-  if ( "\${FlagDefs}" MATCHES "flagGNUC14(;|$)" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 )
-    message ( FATAL_ERROR "GNU GCC version 4.9+ is required to use -std=c++14 parameter!" )
+  if ( "\${FlagDefs}" MATCHES "flagGNUC17(;|$)" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7 )
+    message ( FATAL_ERROR "GNU GCC version 7+ is required to use -std=c++17 parameter!" )
   endif()
 
   remove_definitions ( -DflagMSC )
@@ -1771,8 +1771,8 @@ endif()
 get_directory_property ( FlagDefs COMPILE_DEFINITIONS )
 if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
 
-  if ( "\${FlagDefs}" MATCHES "flagGNUC14(;|$)" )
-    set ( EXTRA_GXX_FLAGS "\${EXTRA_GXX_FLAGS} -std=c++14" )
+  if ( "\${FlagDefs}" MATCHES "flagGNUC17(;|$)" )
+    set ( EXTRA_GXX_FLAGS "\${EXTRA_GXX_FLAGS} -std=c++17" )
   endif()
 
   if ( CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 OR CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 4.9 OR CMAKE_COMPILER_IS_CLANG )

@@ -9,7 +9,7 @@
 This script library was created based on discussion [CMake support](http://www.ultimatepp.org/forums/index.php?t=msg&th=6013&goto=32310&#msg_32310) on the [Ultimate++ forum](http://www.ultimatepp.org/forums).
 
 # Supported features
-- New Core with C++14 build (require GCC 4.9+)
+- New Core with C++17 build (require GCC 7+)
 - Release or debug build
 - Binary resource support (BINARY, BINARY_MASK, BINARY_ARRAY)
 - Cross compile support (require MINGW GCC 4.9+)
@@ -72,7 +72,7 @@ Using of the script library is demonstrated in the [example.sh](example.sh), whe
 * GENERATE_VERBOSE - set to "1" - enable additional output during script processing on the screen
 * GENERATE_DEBUG - set to "1" - enable debug output during script processing on the screen
 * GENERATE_PACKAGE- set to "1" - create a tarball package of the project
-* GENERATE_NOT_Cxx - set to "1" - do not use compiler -std=c++14 parameter (compiler parameter is enabled as default)
+* GENERATE_NOT_Cxx - set to "1" - do not use compiler -std=c++17 parameter (compiler parameter is enabled as default)
 * GENERATE_NOT_PARALLEL - set to "1" - do not build with multiple processes (multiple process build is enabled as default)
 * GENERATE_NOT_PCH - set to "1" - do not build with precompiled headers support (precompiled headers support is enabled as default)
 * GENERATE_NOT_REMOVE_UNUSED_CODE - set to "1" - do not use compile and link parameters to remove unused code and functions (unused code and functions are removed as default)
@@ -149,7 +149,7 @@ Build and configuration flags, that are taken into account by CMake. They can be
 - 'empty' - the flag is not used by the CMake and is only promoted further
 
 CMake sets and using new flags (can be disabled by the script library configuration parameters)
-* flagGNUC14 - set compiler flag -std=c++14
+* flagGNUC17 - set compiler flag -std=c++17
 * flagMP - enable multiple process build (MSVC)
 * flagPCH - use precompiled headers during build (only GCC and Clang are supported now)
 
