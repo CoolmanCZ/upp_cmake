@@ -1773,7 +1773,6 @@ if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
 
   if ( "\${FlagDefs}" MATCHES "flagGNUC17(;|$)" )
     set ( EXTRA_GXX_FLAGS "\${EXTRA_GXX_FLAGS} -std=c++17" )
-    set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} /std:c++17" )
   endif()
 
   if ( CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.9 OR CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 4.9 OR CMAKE_COMPILER_IS_CLANG )
@@ -1830,6 +1829,10 @@ if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG )
 
 elseif ( MSVC )
   set ( CMAKE_EXE_LINKER_FLAGS "\${CMAKE_EXE_LINKER_FLAGS} -nologo" )
+
+  if ( "\${FlagDefs}" MATCHES "flagGNUC17(;|$)" )
+    set ( EXTRA_MSVC_FLAGS "\${EXTRA_MSVC_FLAGS} /std:c++17" )
+  endif()
 
   if ( "\${FlagDefs}" MATCHES "flagEVC(;|$)" )
       if ( NOT "\${FlagDefs}" MATCHES "flagSH3(;|$)" AND NOT "\${FlagDefs}" MATCHES "flagSH4(;|$)" )
@@ -2030,6 +2033,9 @@ foreach( comp_def \${FlagDefs} )
 endforeach()
 
 message ( STATUS "Project compilation flags: \${EXTRA_GCC_FLAGS}" )
+if ( MSVC )
+  message ( STATUS "MSVC flags: \${EXTRA_MSVC_FLAGS}" )
+endif()
 
 EOL
 # End of the cat (CMakeFiles.txt)
