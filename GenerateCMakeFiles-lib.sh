@@ -1901,8 +1901,8 @@ function ( generate_pch TARGET_NAME ${PCH_FILE} PCH_INCLUDE_DIRS )
         list ( APPEND compile_flags "-I\${include_dir}" )
     endforeach()
 
-    # Add source directory of the precompiled header file - for quoted include files
-    list ( APPEND compile_flags "-iquote\${TARGET_DIR}" )
+    # Add source directory of the precompiled header file
+    list ( APPEND compile_flags "-I\${TARGET_DIR}" )
 
     # Add included directories of the external packages collected from defintions of all targets
     foreach ( include_dir \${PCH_INCLUDE_DIRS} )
