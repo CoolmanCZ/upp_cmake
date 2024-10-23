@@ -1,4 +1,5 @@
-2024-10-23 10:10:34 +0200 -         : Replaced -iquote with -I
+2024-10-23 10:26:26 +0200 -         : Set CMake tested version
+2024-10-23 10:10:34 +0200 - ae6af5a : Replaced -iquote with -I
 2024-10-22 19:54:21 +0200 - 5bce87b : Use CMAKE_CXX_STANDARD variable
 2024-10-22 18:59:09 +0200 - 4ec3ea1 : Fixed MSVC compiler flag setting
 2024-10-22 18:21:48 +0200 - a797b9c : Fixed missing MSVC compiler flag /std:c++17
