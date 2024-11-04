@@ -1319,13 +1319,13 @@ generate_main_cmake_file()
         REMOVE_UNUSED_CODE="ON"
     fi
 
-	if [ -n "${PROJECT_EXTRA_INCLUDE_DIR}" ]; then
+    if [ -n "${PROJECT_EXTRA_INCLUDE_DIR}" ]; then
         PROJECT_EXTRA_INCLUDE="${PROJECT_EXTRA_INCLUDE_DIR}"
-		if [ "${PROJECT_EXTRA_INCLUDE_SUBDIRS}" == "1" ]; then
-			subdirs="$(ls -d -- ${PROJECT_EXTRA_INCLUDE_DIR}/*)"
+        if [ "${PROJECT_EXTRA_INCLUDE_SUBDIRS}" == "1" ]; then
+            subdirs="$(ls -d -- ${PROJECT_EXTRA_INCLUDE_DIR}/*)"
             PROJECT_EXTRA_INCLUDE="${PROJECT_EXTRA_INCLUDE} ${subdirs//$'\n'/$' '}"
-		fi
-	fi
+        fi
+    fi
 
     # Begin of the cat (CMakeFiles.txt)
     cat >> "${OFN}" << EOL
@@ -1914,6 +1914,11 @@ function ( generate_pch TARGET_NAME ${PCH_FILE} PCH_INCLUDE_DIRS )
     foreach ( compile_def \${${PCH_COMPILE_DEFINITIONS}} )
         list ( APPEND compile_flags "-D\${compile_def}" )
     endforeach()
+
+    # Add CMAKE_CXX_STANDARD to target compile
+    if ( CMAKE_CXX_STANDARD )
+        list( APPEND compile_flags "-std=gnu++${CMAKE_CXX_STANDARD}" )
+    endif()
 
     list ( REMOVE_DUPLICATES compile_flags )
     separate_arguments ( compile_flags )
