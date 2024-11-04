@@ -1917,7 +1917,7 @@ function ( generate_pch TARGET_NAME ${PCH_FILE} PCH_INCLUDE_DIRS )
 
     # Add CMAKE_CXX_STANDARD to target compile
     if ( CMAKE_CXX_STANDARD )
-        list( APPEND compile_flags "-std=gnu++${CMAKE_CXX_STANDARD}" )
+        list( APPEND compile_flags "-std=gnu++\${CMAKE_CXX_STANDARD}" )
     endif()
 
     list ( REMOVE_DUPLICATES compile_flags )
