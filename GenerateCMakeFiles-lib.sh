@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2016-2023 Radek Malcic
+# Copyright (C) 2016-2025 Radek Malcic
 #
 # All rights reserved.
 #
@@ -2148,9 +2148,16 @@ if ( GIT_FOUND AND EXISTS "\${CMAKE_SOURCE_DIR}/.git" )
 
   # Get the latest abbreviated commit hash of the working branch
   execute_process(
-    COMMAND git log -1 --format=%h
+    COMMAND git log -1 --format=%H
     WORKING_DIRECTORY \${CMAKE_SOURCE_DIR}
     OUTPUT_VARIABLE GIT_COMMIT_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+
+  execute_process(
+    COMMAND git log -1 --format=%h
+    WORKING_DIRECTORY \${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_COMMIT_REVISION
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
 
@@ -2172,7 +2179,8 @@ if ( GIT_FOUND AND EXISTS "\${CMAKE_SOURCE_DIR}/.git" )
 endif()
 
 if ( GIT_COMMIT_HASH )
-  file (APPEND \${BUILD_INFO_H} "#define bmGIT_REVISION \"\${GIT_COMMIT_HASH}\"\n" )
+  file (APPEND \${BUILD_INFO_H} "#define bmGIT_HASH \"\${GIT_COMMIT_HASH}\"\n" )
+  file (APPEND \${BUILD_INFO_H} "#define bmGIT_REVISION \"\${GIT_COMMIT_REVISION}\"\n" )
   file (APPEND \${BUILD_INFO_H} "#define bmGIT_BRANCH \"\${GIT_BRANCH}\"\n" )
   file (APPEND \${BUILD_INFO_H} "#define bmGIT_URL \"\${GIT_REMOTE_URL}\"\n" )
 elseif ( SVN_WC_REVISION )
