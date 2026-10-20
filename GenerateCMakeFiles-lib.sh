@@ -63,6 +63,7 @@ RE_USES='^uses$'
 RE_LINK='^link$'
 RE_LIBRARY='^library$'
 RE_PKG_CONFIG='^pkg_config$'
+RE_EXTERNAL_DEPENDENCY='^external_dependency$'
 RE_STATIC_LIBRARY='^static_library$'
 RE_OPTIONS='^options$'
 RE_FILES='^file$'
@@ -81,8 +82,8 @@ UPP_ALL_USES=()
 UPP_ALL_USES_DONE=()
 INCLUDE_SYSTEM_LIST=()
 
-SECTIONS=("acceptflags" "charset" "custom" "description" "file" "flags" "include" "library" "static_library" "link" "optimize_size" "optimize_speed" "options" "mainconfig" "noblitz" "target" "uses" "pkg_config")
-RE_SKIP_SECTIONS='(acceptflags|mainconfig|charset|description|optimize_size|optimize_speed|noblitz)'
+SECTIONS=("acceptflags" "charset" "custom" "description" "file" "flags" "include" "library" "static_library" "link" "optimize_size" "optimize_speed" "options" "mainconfig" "noblitz" "target" "uses" "pkg_config" "external_dependency")
+RE_SKIP_SECTIONS='(acceptflags|mainconfig|charset|description|optimize_size|optimize_speed|noblitz|external_dependency)'
 
 get_section_name()
 {

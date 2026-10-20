@@ -21,7 +21,7 @@ sudo ln -s /usr/bin/make /usr/bin/gmake
 
 # Install required packages by UPP
 #sudo apt -y install libbz2-dev libfreetype6-dev libpng12-dev gtk2.0-dev libnotify-dev libssl-dev liblz4-tool liblz4-dev
-sudo apt -y install libgtk-3-dev libnotify-dev libbz2-dev libssl-dev libxft-dev libgtk-3-dev
+sudo apt -y install libbz2-dev libssl-dev libfreetype-dev libpng-dev libfontconfig-dev libxft-dev libgtk-3-dev libnotify-dev liblz4-dev libxxhash-dev
 
 sudo apt autoremove
 

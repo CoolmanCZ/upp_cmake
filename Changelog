@@ -1,4 +1,5 @@
-2025-02-19 10:20:54 +0100 -         : Updated build_info.h definitions
+2026-10-20 16:39:18 +0200 -         : Skip external_dependency section
+2025-02-19 10:20:54 +0100 - ef5ab92 : Updated build_info.h definitions
 2025-02-19 10:19:20 +0100 - 9180a16 : Cosmetics
 2024-11-04 09:14:12 +0100 - 08e24e8 : Fixed missing backslash
 2024-11-04 09:00:35 +0100 - 2f0ad31 : Fixed usage of PCH when CMAKE_CXX_STANDARD is defined
